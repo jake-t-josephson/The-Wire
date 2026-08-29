@@ -1,0 +1,17 @@
+{
+  "name": "the-wire-scripts",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "sync:epl": "tsx sync/epl.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.4"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.4",
+    "@types/node": "^24.0.0",
+    "typescript": "~6.0.2"
+  }
+}
