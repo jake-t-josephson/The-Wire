@@ -1,0 +1,38 @@
+@import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Neutrals */
+  --color-ink:        #18181B;
+  --color-surface:    #27272A;
+  --color-surface-2:  #3F3F46;
+  --color-muted:      #71717A;
+  --color-subtle:     #A1A1AA;
+  --color-border:     #3F3F46;
+  --color-bone:       #FAFAF9;
+  --color-bone-2:     #F4F4F5;
+
+  /* Sports accents */
+  --color-pitch:      #16A34A;   /* grass green — scores, live */
+  --color-amber:      #D97706;   /* amber — warnings, cards */
+  --color-red:        #DC2626;   /* red — danger, losses */
+  --color-sky:        #0284C7;   /* sky — info, links */
+
+  /* Typography */
+  --font-sans:    'DM Sans', sans-serif;
+  --font-display: 'Geist', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+}
+
+@utility label-caps {
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+html {
+  background-color: var(--color-ink);
+  color: var(--color-bone);
+  font-family: 'DM Sans', sans-serif;
+}
