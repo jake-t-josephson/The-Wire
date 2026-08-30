@@ -9,6 +9,9 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.THE_WIRE_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.THE_WIRE_SUPABASE_SECRET }}
 
     steps:
       - uses: actions/checkout@v4
@@ -24,16 +27,10 @@ jobs:
         run: npm ci
 
       - name: Check secrets
-        env:
-          SUPABASE_URL: ${{ secrets.THE_WIRE_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.THE_WIRE_SUPABASE_SECRET }}
         run: |
           if [ -z "$SUPABASE_URL" ]; then echo "SUPABASE_URL is EMPTY"; else echo "SUPABASE_URL is set (${#SUPABASE_URL} chars)"; fi
           if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then echo "SUPABASE_SERVICE_ROLE_KEY is EMPTY"; else echo "SUPABASE_SERVICE_ROLE_KEY is set (${#SUPABASE_SERVICE_ROLE_KEY} chars)"; fi
 
       - name: Run EPL sync
         working-directory: scripts
-        env:
-          SUPABASE_URL: ${{ secrets.THE_WIRE_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.THE_WIRE_SUPABASE_SECRET }}
         run: npm run sync:epl
