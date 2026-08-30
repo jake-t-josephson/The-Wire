@@ -360,7 +360,12 @@ export default function EPLDashboard() {
     // Fixtures
     if (isHistorical) {
       fetchHistoricalFixtures(mw.number)
-        .then(setFixtures)
+        .then((f) => {
+          if (f.length > 0) return setFixtures(f);
+          // Empty = Supabase not yet synced or RLS blocking — fall back to ESPN
+          const p = mw.start === mw.end ? mw.start : `${mw.start}-${mw.end}`;
+          return fetchFixtures(p).then(({ fixtures }) => setFixtures(fixtures));
+        })
         .catch((e) => {
           console.error("fetchHistoricalFixtures:", e);
           const p = mw.start === mw.end ? mw.start : `${mw.start}-${mw.end}`;
