@@ -133,35 +133,75 @@ export async function hasStandingsSnapshot(season: number, matchweek: number): P
   return (count ?? 0) > 0;
 }
 
-function standingStat(entry: ESPNStandingEntry, name: string): number {
-  return entry.stats.find((s) => s.name === name)?.value ?? 0;
+interface ComputedStanding {
+  team_id: bigint;
+  played: number; won: number; drawn: number; lost: number;
+  goals_for: number; goals_against: number; goal_diff: number; points: number;
+}
+
+// Compute standings from fixture results in the DB up to a given matchweek.
+// More accurate than fetching from ESPN (which returns live standings that may
+// already include the next matchweek's results).
+export async function computeStandingsFromFixtures(
+  season: number,
+  throughMatchweek: number
+): Promise<ComputedStanding[]> {
+  const { data, error } = await supabase
+    .from("fixtures")
+    .select("home_team_id, away_team_id, home_score, away_score")
+    .eq("league", "epl")
+    .eq("season", season)
+    .eq("status", "finished")
+    .lte("matchweek", throughMatchweek);
+
+  if (error) throw new Error(`computeStandingsFromFixtures: ${error.message}`);
+
+  const map = new Map<string, ComputedStanding>();
+  const init = (id: bigint): ComputedStanding => {
+    const key = String(id);
+    if (!map.has(key)) map.set(key, { team_id: id, played: 0, won: 0, drawn: 0, lost: 0, goals_for: 0, goals_against: 0, goal_diff: 0, points: 0 });
+    return map.get(key)!;
+  };
+
+  for (const f of data ?? []) {
+    const hs = f.home_score as number | null;
+    const as_ = f.away_score as number | null;
+    if (hs === null || as_ === null) continue;
+    const home = init(f.home_team_id as bigint);
+    const away = init(f.away_team_id as bigint);
+    home.played++; away.played++;
+    home.goals_for += hs; home.goals_against += as_; home.goal_diff += hs - as_;
+    away.goals_for += as_; away.goals_against += hs; away.goal_diff += as_ - hs;
+    if (hs > as_)       { home.won++; home.points += 3; away.lost++; }
+    else if (as_ > hs)  { away.won++; away.points += 3; home.lost++; }
+    else                { home.drawn++; home.points += 1; away.drawn++; away.points += 1; }
+  }
+
+  return [...map.values()].sort((a, b) =>
+    b.points - a.points || b.goal_diff - a.goal_diff || b.goals_for - a.goals_for
+  );
 }
 
 export async function insertStandingsSnapshot(
-  entries: ESPNStandingEntry[],
-  teamDbIds: Map<number, bigint>,
+  standings: ComputedStanding[],
   season: number,
   matchweek: number
 ): Promise<void> {
-  const rows = entries.map((e, i) => {
-    const teamId = teamDbIds.get(parseInt(e.team.id));
-    if (!teamId) throw new Error(`No DB id for ESPN team ${e.team.id}`);
-    return {
-      league:        "epl",
-      season,
-      matchweek,
-      team_id:       teamId,
-      position:      Math.round(standingStat(e, "rank")) || i + 1,
-      played:        Math.round(standingStat(e, "gamesPlayed")),
-      won:           Math.round(standingStat(e, "wins")),
-      drawn:         Math.round(standingStat(e, "ties")),
-      lost:          Math.round(standingStat(e, "losses")),
-      goals_for:     Math.round(standingStat(e, "pointsFor")),
-      goals_against: Math.round(standingStat(e, "pointsAgainst")),
-      goal_diff:     Math.round(standingStat(e, "pointDifferential")),
-      points:        Math.round(standingStat(e, "points")),
-    };
-  });
+  const rows = standings.map((s, i) => ({
+    league:        "epl",
+    season,
+    matchweek,
+    team_id:       s.team_id,
+    position:      i + 1,
+    played:        s.played,
+    won:           s.won,
+    drawn:         s.drawn,
+    lost:          s.lost,
+    goals_for:     s.goals_for,
+    goals_against: s.goals_against,
+    goal_diff:     s.goal_diff,
+    points:        s.points,
+  }));
 
   const { error } = await supabase
     .from("standings_snapshots")

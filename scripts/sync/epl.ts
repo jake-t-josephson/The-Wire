@@ -2,7 +2,6 @@ import {
   fetchCalendar,
   fetchMatchweekFixtures,
   fetchMatchSummary,
-  fetchStandings,
   fetchNews,
   groupMatchweeks,
   currentMatchweekIndex,
@@ -16,6 +15,7 @@ import {
   hasMatchStats,
   upsertMatchStats,
   hasStandingsSnapshot,
+  computeStandingsFromFixtures,
   insertStandingsSnapshot,
   upsertNews,
   logSync,
@@ -90,8 +90,8 @@ async function syncEPL() {
 
     if (allFinished && !(await hasStandingsSnapshot(season, mw.number))) {
       console.log(`[sync:epl] snapshotting standings for ${mw.label}`);
-      const entries = await fetchStandings();
-      await insertStandingsSnapshot(entries, teamDbIds, season, mw.number);
+      const computed = await computeStandingsFromFixtures(season, mw.number);
+      await insertStandingsSnapshot(computed, season, mw.number);
     }
   }
 
