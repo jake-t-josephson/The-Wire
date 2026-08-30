@@ -6,6 +6,7 @@ import {
   type Matchweek, type ESPNFixture, type ESPNStandingEntry, type ESPNArticle,
   type MatchweekStats,
 } from "../../lib/espn";
+import { fetchHistoricalFixtures, fetchHistoricalStandings } from "../../lib/supabase";
 import { resolveChannel, faviconUrl } from "../../lib/channels";
 
 // ── Channel badge ─────────────────────────────────────────────────────────────
@@ -306,6 +307,8 @@ function Skeleton({ className = "" }: { className?: string }) {
 export default function EPLDashboard() {
   const [matchweeks,    setMatchweeks]    = useState<Matchweek[]>([]);
   const [mwIndex,       setMwIndex]       = useState<number | null>(null);
+  const [liveMwIndex,   setLiveMwIndex]   = useState<number | null>(null); // never changes
+  const [season,        setSeason]        = useState<number>(new Date().getFullYear());
   const [fixtures,      setFixtures]      = useState<ESPNFixture[]>([]);
   const [standings,     setStandings]     = useState<ESPNStandingEntry[]>([]);
   const [news,          setNews]          = useState<ESPNArticle[]>([]);
@@ -318,17 +321,13 @@ export default function EPLDashboard() {
   // Bootstrap: fetch scoreboard (no date) to get the season calendar
   useEffect(() => {
     fetchFixtures()
-      .then(({ fixtures: todayFixtures, calendar }) => {
+      .then(({ calendar, season: yr }) => {
         const weeks = groupMatchweeks(calendar);
         const idx   = currentMatchweekIndex(weeks);
         setMatchweeks(weeks);
         setMwIndex(idx);
-        // If today has fixtures and it's the current matchweek, use them directly
-        if (todayFixtures.length > 0) {
-          setFixtures(todayFixtures);
-          setLoadingFix(false);
-        }
-        // Otherwise the second useEffect will handle the fetch once mwIndex is set
+        setLiveMwIndex(idx);
+        setSeason(yr);
       })
       .catch(() => {
         setErrorFix(true);
@@ -345,18 +344,51 @@ export default function EPLDashboard() {
       .finally(() => setLoadingNews(false));
   }, []);
 
-  // Whenever the selected matchweek changes, fetch its full fixture list
+  // Whenever the selected matchweek changes, fetch fixtures + standings from
+  // the appropriate source: Supabase for completed past weeks, ESPN for current/future.
   useEffect(() => {
-    if (mwIndex === null || matchweeks.length === 0) return;
+    if (mwIndex === null || liveMwIndex === null || matchweeks.length === 0) return;
     const mw = matchweeks[mwIndex];
+    const isHistorical = mwIndex < liveMwIndex;
+
     setLoadingFix(true);
     setErrorFix(false);
-    const dateParam = mw.start === mw.end ? mw.start : `${mw.start}-${mw.end}`;
-    fetchFixtures(dateParam)
-      .then(({ fixtures }) => setFixtures(fixtures))
-      .catch(() => setErrorFix(true))
-      .finally(() => setLoadingFix(false));
-  }, [mwIndex, matchweeks]);
+
+    if (isHistorical) {
+      // Fetch from Supabase
+      Promise.all([
+        fetchHistoricalFixtures(mw.number),
+        fetchHistoricalStandings(mw.number, season),
+      ])
+        .then(([dbFixtures, dbStandings]) => {
+          setFixtures(dbFixtures);
+          // Fall back to ESPN standings if snapshot not taken yet
+          if (dbStandings.length > 0) setStandings(dbStandings);
+        })
+        .catch(() => {
+          // Fall back to ESPN on error
+          const dateParam = mw.start === mw.end ? mw.start : `${mw.start}-${mw.end}`;
+          return fetchFixtures(dateParam).then(({ fixtures }) => setFixtures(fixtures));
+        })
+        .finally(() => setLoadingFix(false));
+    } else {
+      // Fetch live from ESPN
+      const dateParam = mw.start === mw.end ? mw.start : `${mw.start}-${mw.end}`;
+      fetchFixtures(dateParam)
+        .then(({ fixtures }) => setFixtures(fixtures))
+        .catch(() => setErrorFix(true))
+        .finally(() => setLoadingFix(false));
+
+      // Refresh standings from ESPN for current/future weeks
+      if (mwIndex === liveMwIndex) {
+        setLoadingStd(true);
+        fetchStandings()
+          .then(setStandings)
+          .catch(() => setErrorStd(true))
+          .finally(() => setLoadingStd(false));
+      }
+    }
+  }, [mwIndex, liveMwIndex, matchweeks, season]);
 
   const liveCount = fixtures.filter(
     (f) => f.competitions[0].status.type.state === "in"

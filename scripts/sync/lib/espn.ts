@@ -53,7 +53,7 @@ export interface ESPNStandingEntry {
 export interface ESPNTeamMatchStats {
   team: { id: string };
   homeAway: "home" | "away";
-  statistics: Array<{ name: string; displayValue: string; value: number }>;
+  statistics: Array<{ name: string; displayValue: string; value?: number }>;
 }
 
 export interface ESPNArticle {

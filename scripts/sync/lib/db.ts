@@ -91,7 +91,9 @@ export async function hasMatchStats(fixtureId: bigint): Promise<boolean> {
 
 function stat(statistics: ESPNTeamMatchStats["statistics"], name: string): number | null {
   const s = statistics.find((x) => x.name === name);
-  return s ? s.value : null;
+  if (!s) return null;
+  const n = parseFloat(s.displayValue);
+  return isNaN(n) ? null : n;
 }
 
 export async function upsertMatchStats(

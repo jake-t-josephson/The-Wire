@@ -213,12 +213,13 @@ async function get(url: string) {
 // Pass a single date (YYYYMMDD) or a range (YYYYMMDD-YYYYMMDD).
 export async function fetchFixtures(
   dates?: string
-): Promise<{ fixtures: ESPNFixture[]; calendar: string[] }> {
+): Promise<{ fixtures: ESPNFixture[]; calendar: string[]; season: number }> {
   const params = dates ? `?dates=${dates}` : "";
   const data = await get(`${SPORT_BASE}/soccer/eng.1/scoreboard${params}`);
   return {
     fixtures: data.events ?? [],
     calendar: data.leagues?.[0]?.calendar ?? [],
+    season: data.season?.year ?? new Date().getFullYear(),
   };
 }
 
