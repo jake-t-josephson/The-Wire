@@ -26,6 +26,6 @@ jobs:
       - name: Run EPL sync
         working-directory: scripts
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_URL: ${{ secrets.THE_WIRE_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.THE_WIRE_SUPABASE_SECRET }}
         run: npm run sync:epl
