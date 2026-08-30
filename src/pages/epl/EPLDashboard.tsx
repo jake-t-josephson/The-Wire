@@ -395,8 +395,8 @@ export default function EPLDashboard() {
   ).length;
 
   const days       = groupByDate(fixtures);
-  const mwStats    = computeMatchweekStats(fixtures);
-  const posChanges = computePositionChanges(standings, mwStats);
+  const mwStats    = standingsMode === "live" ? computeMatchweekStats(fixtures) : new Map<string, MatchweekStats>();
+  const posChanges = standingsMode === "live" ? computePositionChanges(standings, mwStats) : new Map<string, number>();
 
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
