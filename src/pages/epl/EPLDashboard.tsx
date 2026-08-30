@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   fetchFixtures, fetchStandings, fetchNews,
   groupMatchweeks, currentMatchweekIndex, groupByDate, timeAgo,
@@ -42,6 +43,7 @@ function ChannelBadge({ name }: { name: string }) {
 // ── Fixture row ───────────────────────────────────────────────────────────────
 
 function FixtureRow({ fixture }: { fixture: ESPNFixture }) {
+  const navigate  = useNavigate();
   const comp      = fixture.competitions[0];
   const status    = comp.status.type;
   const home      = comp.competitors.find((c) => c.homeAway === "home")!;
@@ -56,8 +58,10 @@ function FixtureRow({ fixture }: { fixture: ESPNFixture }) {
   });
 
   return (
-    <div className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-colors
-      ${isLive ? "bg-surface-2 ring-1 ring-pitch/25" : "bg-surface hover:bg-surface-2/40"}`}
+    <div
+      onClick={() => navigate(`/epl/match/${fixture.id}`)}
+      className={`flex items-center gap-2 px-4 py-3 rounded-lg transition-colors cursor-pointer
+        ${isLive ? "bg-surface-2 ring-1 ring-pitch/25 hover:bg-surface-2" : "bg-surface hover:bg-surface-2/40"}`}
     >
       {/* Home */}
       <div className="flex items-center gap-2 flex-1 justify-end min-w-0">

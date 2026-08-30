@@ -223,6 +223,41 @@ export async function fetchFixtures(
   };
 }
 
+export interface ESPNMatchSummary {
+  homeTeam: { id: string; displayName: string; shortDisplayName: string; logo: string; color: string; score: string };
+  awayTeam: { id: string; displayName: string; shortDisplayName: string; logo: string; color: string; score: string };
+  status: { state: FixtureState; detail: string; clock: string; completed: boolean };
+  date: string;
+  venue?: string;
+  homeStats: Array<{ name: string; displayValue: string }>;
+  awayStats: Array<{ name: string; displayValue: string }>;
+}
+
+export async function fetchMatchSummary(eventId: string): Promise<ESPNMatchSummary | null> {
+  const data = await get(`${SPORT_BASE}/soccer/eng.1/summary?event=${eventId}`);
+  const comp  = data.header?.competitions?.[0];
+  const teams: any[] = data.boxscore?.teams ?? [];
+  if (!comp || teams.length < 2) return null;
+
+  const homeComp = comp.competitors?.find((c: any) => c.homeAway === "home");
+  const awayComp = comp.competitors?.find((c: any) => c.homeAway === "away");
+  const homeBox  = teams.find((t: any) => t.homeAway === "home");
+  const awayBox  = teams.find((t: any) => t.homeAway === "away");
+  if (!homeComp || !awayComp || !homeBox || !awayBox) return null;
+
+  const logo = (c: any) => c.team?.logos?.[0]?.href ?? c.team?.logo ?? "";
+
+  return {
+    homeTeam: { id: homeComp.team.id, displayName: homeComp.team.displayName, shortDisplayName: homeComp.team.shortDisplayName, logo: logo(homeComp), color: homeComp.team.color ?? "27272a", score: homeComp.score ?? "" },
+    awayTeam: { id: awayComp.team.id, displayName: awayComp.team.displayName, shortDisplayName: awayComp.team.shortDisplayName, logo: logo(awayComp), color: awayComp.team.color ?? "27272a", score: awayComp.score ?? "" },
+    status: { state: comp.status?.type?.state ?? "pre", detail: comp.status?.type?.detail ?? comp.status?.type?.shortDetail ?? "", clock: comp.status?.displayClock ?? "", completed: comp.status?.type?.completed ?? false },
+    date: comp.date ?? "",
+    venue: comp.venue?.fullName,
+    homeStats: homeBox.statistics ?? [],
+    awayStats: awayBox.statistics ?? [],
+  };
+}
+
 export async function fetchStandings(): Promise<ESPNStandingEntry[]> {
   const data = await get(`${WEB_BASE}/soccer/eng.1/standings`);
   return data.children?.[0]?.standings?.entries ?? [];
