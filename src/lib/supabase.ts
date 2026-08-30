@@ -118,33 +118,59 @@ function dbStandingToESPN(row: DbStanding): ESPNStandingEntry {
 // ── Queries ───────────────────────────────────────────────────────────────────
 
 export async function fetchHistoricalFixtures(matchweek: number): Promise<ESPNFixture[]> {
-  const { data, error } = await supabase
+  // Two queries to avoid PostgREST ambiguity with multiple FKs to teams table
+  const { data: fixtureRows, error: fErr } = await supabase
     .from("fixtures")
-    .select(`
-      api_id, kickoff, status, home_score, away_score,
-      home_team:home_team_id(api_id, name, short_name, crest_url),
-      away_team:away_team_id(api_id, name, short_name, crest_url)
-    `)
+    .select("api_id, kickoff, status, home_score, away_score, home_team_id, away_team_id")
     .eq("league", "epl")
     .eq("matchweek", matchweek)
     .order("kickoff");
 
-  if (error) throw new Error(`fetchHistoricalFixtures: ${error.message}`);
-  return ((data ?? []) as unknown as DbFixture[]).map(dbFixtureToESPN);
+  if (fErr) throw new Error(`fetchHistoricalFixtures: ${fErr.message}`);
+  if (!fixtureRows || fixtureRows.length === 0) return [];
+
+  const teamIds = [...new Set(fixtureRows.flatMap((f) => [f.home_team_id, f.away_team_id]))];
+
+  const { data: teamRows, error: tErr } = await supabase
+    .from("teams")
+    .select("id, api_id, name, short_name, crest_url")
+    .in("id", teamIds);
+
+  if (tErr) throw new Error(`fetchHistoricalFixtures teams: ${tErr.message}`);
+  const teamMap = new Map((teamRows ?? []).map((t) => [t.id as number, t as DbTeam & { id: number }]));
+
+  return fixtureRows.map((f) => {
+    const ht = teamMap.get(f.home_team_id as number);
+    const at = teamMap.get(f.away_team_id as number);
+    if (!ht || !at) throw new Error(`Missing team for fixture ${f.api_id}`);
+    return dbFixtureToESPN({ ...f, home_team: ht, away_team: at } as DbFixture);
+  });
 }
 
 export async function fetchHistoricalStandings(matchweek: number, season: number): Promise<ESPNStandingEntry[]> {
-  const { data, error } = await supabase
+  const { data: snapRows, error: sErr } = await supabase
     .from("standings_snapshots")
-    .select(`
-      position, played, won, drawn, lost, goals_for, goals_against, goal_diff, points,
-      team:team_id(api_id, name, short_name, crest_url)
-    `)
+    .select("position, played, won, drawn, lost, goals_for, goals_against, goal_diff, points, team_id")
     .eq("league", "epl")
     .eq("season", season)
     .eq("matchweek", matchweek)
     .order("position");
 
-  if (error) throw new Error(`fetchHistoricalStandings: ${error.message}`);
-  return ((data ?? []) as unknown as DbStanding[]).map(dbStandingToESPN);
+  if (sErr) throw new Error(`fetchHistoricalStandings: ${sErr.message}`);
+  if (!snapRows || snapRows.length === 0) return [];
+
+  const teamIds = snapRows.map((s) => s.team_id);
+  const { data: teamRows, error: tErr } = await supabase
+    .from("teams")
+    .select("id, api_id, name, short_name, crest_url")
+    .in("id", teamIds);
+
+  if (tErr) throw new Error(`fetchHistoricalStandings teams: ${tErr.message}`);
+  const teamMap = new Map((teamRows ?? []).map((t) => [t.id as number, t as DbTeam & { id: number }]));
+
+  return snapRows.map((s) => {
+    const team = teamMap.get(s.team_id as number);
+    if (!team) throw new Error(`Missing team for snapshot row`);
+    return dbStandingToESPN({ ...s, team } as DbStanding);
+  });
 }

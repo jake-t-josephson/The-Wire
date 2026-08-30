@@ -361,7 +361,8 @@ export default function EPLDashboard() {
     if (isHistorical) {
       fetchHistoricalFixtures(mw.number)
         .then(setFixtures)
-        .catch(() => {
+        .catch((e) => {
+          console.error("fetchHistoricalFixtures:", e);
           const p = mw.start === mw.end ? mw.start : `${mw.start}-${mw.end}`;
           return fetchFixtures(p).then(({ fixtures }) => setFixtures(fixtures));
         })
@@ -378,7 +379,7 @@ export default function EPLDashboard() {
     setLoadingSnap(true);
     fetchHistoricalStandings(mw.number, season)
       .then(setSnapshotStandings)
-      .catch(() => setSnapshotStandings([]))
+      .catch((e) => { console.error("fetchHistoricalStandings:", e); setSnapshotStandings([]); })
       .finally(() => setLoadingSnap(false));
   }, [mwIndex, liveMwIndex, matchweeks, season]);
 
