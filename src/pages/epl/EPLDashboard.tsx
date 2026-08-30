@@ -305,20 +305,23 @@ function Skeleton({ className = "" }: { className?: string }) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function EPLDashboard() {
-  const [matchweeks,    setMatchweeks]    = useState<Matchweek[]>([]);
-  const [mwIndex,       setMwIndex]       = useState<number | null>(null);
-  const [liveMwIndex,   setLiveMwIndex]   = useState<number | null>(null); // never changes
-  const [season,        setSeason]        = useState<number>(new Date().getFullYear());
-  const [fixtures,      setFixtures]      = useState<ESPNFixture[]>([]);
-  const [standings,     setStandings]     = useState<ESPNStandingEntry[]>([]);
-  const [news,          setNews]          = useState<ESPNArticle[]>([]);
-  const [loadingFix,    setLoadingFix]    = useState(true);
-  const [loadingStd,    setLoadingStd]    = useState(true);
-  const [loadingNews,   setLoadingNews]   = useState(true);
-  const [errorFix,      setErrorFix]      = useState(false);
-  const [errorStd,      setErrorStd]      = useState(false);
+  const [matchweeks,       setMatchweeks]       = useState<Matchweek[]>([]);
+  const [mwIndex,          setMwIndex]          = useState<number | null>(null);
+  const [liveMwIndex,      setLiveMwIndex]      = useState<number | null>(null);
+  const [season,           setSeason]           = useState<number>(new Date().getFullYear());
+  const [fixtures,         setFixtures]         = useState<ESPNFixture[]>([]);
+  const [liveStandings,    setLiveStandings]    = useState<ESPNStandingEntry[]>([]);
+  const [snapshotStandings,setSnapshotStandings]= useState<ESPNStandingEntry[]>([]);
+  const [standingsMode,    setStandingsMode]    = useState<"snapshot" | "live">("live");
+  const [news,             setNews]             = useState<ESPNArticle[]>([]);
+  const [loadingFix,       setLoadingFix]       = useState(true);
+  const [loadingStd,       setLoadingStd]       = useState(true);
+  const [loadingSnap,      setLoadingSnap]      = useState(false);
+  const [loadingNews,      setLoadingNews]      = useState(true);
+  const [errorFix,         setErrorFix]         = useState(false);
+  const [errorStd,         setErrorStd]         = useState(false);
 
-  // Bootstrap: fetch scoreboard (no date) to get the season calendar
+  // Bootstrap: calendar + live standings + news (once)
   useEffect(() => {
     fetchFixtures()
       .then(({ calendar, season: yr }) => {
@@ -329,13 +332,10 @@ export default function EPLDashboard() {
         setLiveMwIndex(idx);
         setSeason(yr);
       })
-      .catch(() => {
-        setErrorFix(true);
-        setLoadingFix(false);
-      });
+      .catch(() => { setErrorFix(true); setLoadingFix(false); });
 
     fetchStandings()
-      .then(setStandings)
+      .then(setLiveStandings)
       .catch(() => setErrorStd(true))
       .finally(() => setLoadingStd(false));
 
@@ -344,8 +344,7 @@ export default function EPLDashboard() {
       .finally(() => setLoadingNews(false));
   }, []);
 
-  // Whenever the selected matchweek changes, fetch fixtures + standings from
-  // the appropriate source: Supabase for completed past weeks, ESPN for current/future.
+  // On matchweek change: fetch fixtures (ESPN or Supabase) + snapshot standings
   useEffect(() => {
     if (mwIndex === null || liveMwIndex === null || matchweeks.length === 0) return;
     const mw = matchweeks[mwIndex];
@@ -353,42 +352,37 @@ export default function EPLDashboard() {
 
     setLoadingFix(true);
     setErrorFix(false);
+    setSnapshotStandings([]);
 
+    // Default mode: snapshot for past weeks, live for current/future
+    setStandingsMode(isHistorical ? "snapshot" : "live");
+
+    // Fixtures
     if (isHistorical) {
-      // Fetch from Supabase
-      Promise.all([
-        fetchHistoricalFixtures(mw.number),
-        fetchHistoricalStandings(mw.number, season),
-      ])
-        .then(([dbFixtures, dbStandings]) => {
-          setFixtures(dbFixtures);
-          // Fall back to ESPN standings if snapshot not taken yet
-          if (dbStandings.length > 0) setStandings(dbStandings);
-        })
+      fetchHistoricalFixtures(mw.number)
+        .then(setFixtures)
         .catch(() => {
-          // Fall back to ESPN on error
-          const dateParam = mw.start === mw.end ? mw.start : `${mw.start}-${mw.end}`;
-          return fetchFixtures(dateParam).then(({ fixtures }) => setFixtures(fixtures));
+          const p = mw.start === mw.end ? mw.start : `${mw.start}-${mw.end}`;
+          return fetchFixtures(p).then(({ fixtures }) => setFixtures(fixtures));
         })
         .finally(() => setLoadingFix(false));
     } else {
-      // Fetch live from ESPN
-      const dateParam = mw.start === mw.end ? mw.start : `${mw.start}-${mw.end}`;
-      fetchFixtures(dateParam)
+      const p = mw.start === mw.end ? mw.start : `${mw.start}-${mw.end}`;
+      fetchFixtures(p)
         .then(({ fixtures }) => setFixtures(fixtures))
         .catch(() => setErrorFix(true))
         .finally(() => setLoadingFix(false));
-
-      // Refresh standings from ESPN for current/future weeks
-      if (mwIndex === liveMwIndex) {
-        setLoadingStd(true);
-        fetchStandings()
-          .then(setStandings)
-          .catch(() => setErrorStd(true))
-          .finally(() => setLoadingStd(false));
-      }
     }
+
+    // Snapshot standings (always attempt — enables toggle on any matchweek)
+    setLoadingSnap(true);
+    fetchHistoricalStandings(mw.number, season)
+      .then(setSnapshotStandings)
+      .catch(() => setSnapshotStandings([]))
+      .finally(() => setLoadingSnap(false));
   }, [mwIndex, liveMwIndex, matchweeks, season]);
+
+  const standings = standingsMode === "live" ? liveStandings : snapshotStandings;
 
   const liveCount = fixtures.filter(
     (f) => f.competitions[0].status.type.state === "in"
@@ -473,12 +467,37 @@ export default function EPLDashboard() {
         {/* Right: Standings + Key */}
         <div className="space-y-4">
           <div className="rounded-lg border border-border bg-surface p-5">
-            <h2 className="label-caps text-muted mb-4">Standings</h2>
-            {loadingStd ? (
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="label-caps text-muted">Standings</h2>
+              <div className="flex items-center gap-0.5 bg-surface-2 rounded p-0.5">
+                <button
+                  onClick={() => setStandingsMode("snapshot")}
+                  disabled={snapshotStandings.length === 0}
+                  className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
+                    standingsMode === "snapshot"
+                      ? "bg-ink text-bone font-semibold"
+                      : "text-muted hover:text-subtle disabled:opacity-30 disabled:cursor-not-allowed"
+                  }`}
+                >
+                  {mwIndex !== null && matchweeks[mwIndex] ? matchweeks[mwIndex].label : "GW"}
+                </button>
+                <button
+                  onClick={() => setStandingsMode("live")}
+                  className={`text-[10px] px-2 py-0.5 rounded transition-colors ${
+                    standingsMode === "live"
+                      ? "bg-ink text-bone font-semibold"
+                      : "text-muted hover:text-subtle"
+                  }`}
+                >
+                  Live
+                </button>
+              </div>
+            </div>
+            {(standingsMode === "live" ? loadingStd : loadingSnap) ? (
               <div className="space-y-2">
                 {Array.from({ length: 12 }).map((_, i) => <Skeleton key={i} className="h-6 w-full" />)}
               </div>
-            ) : errorStd ? (
+            ) : errorStd && standingsMode === "live" ? (
               <p className="text-sm text-muted py-6 text-center">Couldn't load standings.</p>
             ) : (
               <StandingsTable entries={standings} mwStats={mwStats} posChanges={posChanges} />
