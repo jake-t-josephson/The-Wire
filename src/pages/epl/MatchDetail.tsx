@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchMatchSummary, type ESPNMatchSummary } from "../../lib/espn";
+import { PageContainer } from "../../components/layout/Page";
+import { StatusDot } from "../../components/sports/StatusDot";
+import { TeamCrest } from "../../components/sports/TeamCrest";
+import { Button } from "../../components/ui/Button";
+import { Panel } from "../../components/ui/Panel";
+import { Skeleton } from "../../components/ui/Skeleton";
+import { SectionLabel } from "../../components/ui/Typography";
 
 // ── Stat config ───────────────────────────────────────────────────────────────
 
@@ -30,8 +37,8 @@ function PossessionBar({ home, away }: { home: number; away: number }) {
         <span className="text-sm font-semibold text-bone tabular-nums">{away}%</span>
       </div>
       <div className="h-1.5 rounded-full overflow-hidden flex">
-        <div className="h-full bg-pitch transition-all duration-500" style={{ width: `${home}%` }} />
-        <div className="h-full bg-sky transition-all duration-500" style={{ width: `${away}%` }} />
+        <div className="h-full bg-signal transition-all duration-500" style={{ width: `${home}%` }} />
+        <div className="h-full bg-silver transition-all duration-500" style={{ width: `${away}%` }} />
       </div>
     </div>
   );
@@ -53,21 +60,15 @@ function StatRow({ label, home, away }: { label: string; home: number; away: num
       </div>
       <div className="flex gap-1 items-center">
         <div className="flex-1 flex justify-end">
-          <div className="h-1 rounded-l-full bg-pitch transition-all duration-500" style={{ width: `${homeW}%` }} />
+          <div className="h-1 rounded-l-full bg-signal transition-all duration-500" style={{ width: `${homeW}%` }} />
         </div>
         <div className="w-px h-2 bg-border flex-shrink-0" />
         <div className="flex-1">
-          <div className="h-1 rounded-r-full bg-sky transition-all duration-500" style={{ width: `${awayW}%` }} />
+          <div className="h-1 rounded-r-full bg-silver transition-all duration-500" style={{ width: `${awayW}%` }} />
         </div>
       </div>
     </div>
   );
-}
-
-// ── Skeleton ──────────────────────────────────────────────────────────────────
-
-function Skeleton({ className = "" }: { className?: string }) {
-  return <div className={`animate-pulse rounded bg-surface-2 ${className}`} />;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -89,15 +90,16 @@ export default function MatchDetail() {
   }, [eventId]);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-8 py-8">
-      {/* Back */}
-      <button
+    <PageContainer className="max-w-3xl py-8">
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => navigate("/epl")}
-        className="flex items-center gap-1.5 text-xs text-muted hover:text-subtle transition-colors mb-6 group"
+        className="group mb-6 px-0"
       >
         <span className="group-hover:-translate-x-0.5 transition-transform">‹</span>
         Premier League
-      </button>
+      </Button>
 
       {loading ? (
         <MatchSkeleton />
@@ -106,14 +108,14 @@ export default function MatchDetail() {
       ) : (
         <MatchContent summary={summary} />
       )}
-    </div>
+    </PageContainer>
   );
 }
 
 function MatchSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="rounded-lg border border-border bg-surface p-8">
+      <Panel className="p-8">
         <div className="flex items-center gap-6">
           <div className="flex-1 flex flex-col items-end gap-3">
             <Skeleton className="w-16 h-16 rounded-full" />
@@ -128,10 +130,10 @@ function MatchSkeleton() {
             <Skeleton className="h-4 w-24" />
           </div>
         </div>
-      </div>
-      <div className="rounded-lg border border-border bg-surface p-6 space-y-4">
+      </Panel>
+      <Panel className="space-y-4 p-6">
         {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-8 w-full" />)}
-      </div>
+      </Panel>
     </div>
   );
 }
@@ -152,11 +154,11 @@ function MatchContent({ summary }: { summary: ESPNMatchSummary }) {
   return (
     <div className="space-y-4">
       {/* Match header */}
-      <div className="rounded-lg border border-border bg-surface p-6 md:p-8">
+      <Panel className="p-6 md:p-8">
         <div className="flex items-center gap-4 md:gap-8">
           {/* Home */}
           <div className="flex-1 flex flex-col items-end gap-2 min-w-0">
-            <img src={homeTeam.logo} alt="" style={{ width: 56, height: 56 }} className="object-contain flex-shrink-0" />
+            <TeamCrest src={homeTeam.logo} name={homeTeam.displayName} abbreviation={homeTeam.shortDisplayName} size={56} />
             <p className="text-sm md:text-base font-semibold text-bone text-right leading-snug">
               {homeTeam.displayName}
             </p>
@@ -180,8 +182,8 @@ function MatchContent({ summary }: { summary: ESPNMatchSummary }) {
                 </div>
                 {isLive ? (
                   <div className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-pitch animate-pulse" />
-                    <span className="text-xs font-medium text-pitch">{status.clock}</span>
+                    <StatusDot />
+                    <span className="text-xs font-medium text-signal">{status.clock}</span>
                   </div>
                 ) : (
                   <p className="label-caps text-muted">{status.detail}</p>
@@ -192,7 +194,7 @@ function MatchContent({ summary }: { summary: ESPNMatchSummary }) {
 
           {/* Away */}
           <div className="flex-1 flex flex-col items-start gap-2 min-w-0">
-            <img src={awayTeam.logo} alt="" style={{ width: 56, height: 56 }} className="object-contain flex-shrink-0" />
+            <TeamCrest src={awayTeam.logo} name={awayTeam.displayName} abbreviation={awayTeam.shortDisplayName} size={56} />
             <p className="text-sm md:text-base font-semibold text-bone leading-snug">
               {awayTeam.displayName}
             </p>
@@ -209,20 +211,20 @@ function MatchContent({ summary }: { summary: ESPNMatchSummary }) {
             </>
           )}
         </div>
-      </div>
+      </Panel>
 
       {/* Stats */}
       {!isPre && (
-        <div className="rounded-lg border border-border bg-surface p-5">
+        <Panel className="p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-pitch" />
+              <div className="w-2.5 h-2.5 rounded-full bg-signal" />
               <span className="text-xs font-medium text-subtle">{homeTeam.shortDisplayName}</span>
             </div>
-            <h2 className="label-caps text-muted">Match Stats</h2>
+            <SectionLabel>Match Stats</SectionLabel>
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-subtle">{awayTeam.shortDisplayName}</span>
-              <div className="w-2.5 h-2.5 rounded-full bg-sky" />
+              <div className="w-2.5 h-2.5 rounded-full bg-silver" />
             </div>
           </div>
 
@@ -247,7 +249,7 @@ function MatchContent({ summary }: { summary: ESPNMatchSummary }) {
               })}
             </div>
           )}
-        </div>
+        </Panel>
       )}
     </div>
   );

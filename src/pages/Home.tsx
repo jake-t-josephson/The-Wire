@@ -1,46 +1,340 @@
-import { Link } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  fetchFixtures, fetchStandings, fetchNews,
+  groupMatchweeks, currentMatchweekIndex,
+  type ESPNFixture, type ESPNStandingEntry, type ESPNArticle,
+} from "../lib/espn";
+import { fetchWireroom } from "../lib/supabase";
+import type { WireroomBrief, WireroomSection } from "../lib/articles";
+import { StatusDot } from "../components/sports/StatusDot";
+import { TeamCrest } from "../components/sports/TeamCrest";
+import { Skeleton } from "../components/ui/Skeleton";
 
-const LEAGUES = [
-  {
-    id: "epl",
-    name: "Premier League",
-    region: "England",
-    path: "/epl",
-    live: true,
-  },
-  { id: "nfl", name: "NFL",  region: "USA",     path: "/nfl",  live: false },
-  { id: "nba", name: "NBA",  region: "USA",     path: "/nba",  live: false },
-  { id: "cfb", name: "College Football", region: "SEC · Big Ten", path: "/cfb", live: false },
-] as const;
+// ── Live rail ─────────────────────────────────────────────────────────────────
 
-export default function Home() {
+function LiveCard({ fixture }: { fixture: ESPNFixture }) {
+  const navigate = useNavigate();
+  const comp   = fixture.competitions[0];
+  const status = comp.status.type;
+  const home   = comp.competitors.find((c) => c.homeAway === "home")!;
+  const away   = comp.competitors.find((c) => c.homeAway === "away")!;
+  const isLive = status.state === "in";
+  const isDone = status.state === "post";
+  const clock  = comp.status.displayClock;
+  const isWire = isLive && parseInt(clock) >= 88;
+
+  const teamClass = (winner: boolean) =>
+    `live-card__team-name${isDone && !winner ? " live-card__team-name--dim" : ""}`;
+  const scoreClass = (winner: boolean) =>
+    `live-card__score${isDone && !winner ? " live-card__score--dim" : ""}`;
+
   return (
-    <div className="max-w-6xl mx-auto px-4 md:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-bone">The Wire</h1>
-        <p className="mt-1 text-sm text-subtle">Your sports hub — scores, standings, news.</p>
+    <div className="live-card" onClick={() => navigate(`/epl/match/${fixture.id}`)}>
+      {isLive && <div className="live-card__bar" />}
+
+      <div className="live-card__header" style={{ marginLeft: isLive ? 8 : 0 }}>
+        <StatusDot state={isLive ? (isWire ? "wire" : "live") : "final"} />
+        <span className="live-card__clock">{isLive ? clock : "Final"}</span>
+        <span className="live-card__league-tag">PL</span>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {LEAGUES.map((l) => (
-          <div key={l.id} className={`relative rounded-lg border border-border bg-surface p-5 ${l.live ? "hover:border-subtle transition-colors cursor-pointer" : "opacity-50"}`}>
-            {l.live ? (
-              <Link to={l.path} className="absolute inset-0" aria-label={l.name} />
-            ) : null}
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="font-semibold text-bone">{l.name}</p>
-                <p className="text-xs text-muted mt-0.5">{l.region}</p>
-              </div>
-              {l.live ? (
-                <span className="label-caps text-pitch bg-pitch/10 border border-pitch/20 rounded px-2 py-0.5">Live</span>
-              ) : (
-                <span className="label-caps text-muted bg-surface-2 border border-border rounded px-2 py-0.5">Soon</span>
-              )}
-            </div>
+      <div className="live-card__teams" style={{ marginLeft: isLive ? 8 : 0 }}>
+        {[{ c: home, win: home.winner }, { c: away, win: away.winner }].map(({ c, win }) => (
+          <div key={c.homeAway} className="live-card__team">
+            <TeamCrest src={c.team.logo} name={c.team.displayName} abbreviation={c.team.abbreviation} size={20} />
+            <span className={teamClass(!!win)}>{c.team.shortDisplayName}</span>
+            <span className={scoreClass(!!win)}>{c.score}</span>
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+function LiveRail({ fixtures }: { fixtures: ESPNFixture[] }) {
+  const now = new Date();
+  const dateLabel = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const timeLabel = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const cols = Math.min(fixtures.length, 4);
+
+  return (
+    <div className="live-rail">
+      <div className="live-rail__inner">
+        <div className="live-rail__header">
+          <span className="live-rail__badge">Live now</span>
+          <span className="live-rail__meta">{dateLabel} · {timeLabel}</span>
+          <span className="live-rail__count">{fixtures.length} game{fixtures.length !== 1 ? "s" : ""}</span>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 14 }}>
+          {fixtures.slice(0, 4).map((f) => <LiveCard key={f.id} fixture={f} />)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Wireroom block ────────────────────────────────────────────────────────────
+
+function WireroomBlock({
+  brief, fallbackArticles, loading,
+}: {
+  brief: WireroomBrief | null;
+  fallbackArticles: ESPNArticle[];
+  loading: boolean;
+}) {
+  const time = brief
+    ? new Date(brief.generatedAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    : fallbackArticles[0]
+    ? new Date(fallbackArticles[0].published).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    : "";
+
+  const sourceCount = brief?.sourceCount ?? (fallbackArticles.length > 0 ? 1 : 0);
+
+  return (
+    <div>
+      <div className="wireroom__header">
+        <div className="wireroom__sq" />
+        <span className="wireroom__label">Wireroom</span>
+        {!loading && sourceCount > 0 && (
+          <span className="wireroom__source-count">
+            assembled from {sourceCount} source{sourceCount !== 1 ? "s" : ""}, {time}
+          </span>
+        )}
+        <div className="wireroom__rule" />
+        <span className="wireroom__league-tag">Premier League</span>
+      </div>
+
+      {loading ? (
+        <div className="space-y-4">
+          <Skeleton height={200} />
+          <Skeleton height={60} />
+          <Skeleton height={60} />
+        </div>
+      ) : brief ? (
+        <BriefView brief={brief} />
+      ) : fallbackArticles.length > 0 ? (
+        <FallbackView articles={fallbackArticles} />
+      ) : null}
+    </div>
+  );
+}
+
+function BriefSection({ section }: { section: WireroomSection }) {
+  return (
+    <div className="wireroom__section">
+      <div className="wireroom__section-theme">{section.theme}</div>
+      <div className="wireroom__section-heading">{section.heading}</div>
+      <p className="wireroom__section-body">{section.body}</p>
+      {section.links.length > 0 && (
+        <div className="wireroom__section-links">
+          {section.links.map((l, i) => (
+            <a key={i} href={l.url} target="_blank" rel="noopener noreferrer" className="wireroom__section-link">
+              {l.label} →
+            </a>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BriefView({ brief }: { brief: WireroomBrief }) {
+  return (
+    <div className="wireroom__article">
+      <div className="wireroom__article-title">{brief.title}</div>
+      {brief.sections.map((s, i) => (
+        <BriefSection key={i} section={s} />
+      ))}
+    </div>
+  );
+}
+
+function FallbackView({ articles }: { articles: ESPNArticle[] }) {
+  return (
+    <div className="wireroom__article">
+      <div className="wireroom__article-title">THIS WEEK IN THE PREMIER LEAGUE</div>
+      <div className="wireroom__section">
+        <div className="wireroom__section-theme">Latest</div>
+        <div className="wireroom__section-heading">FROM THE WIRE</div>
+        <div className="wireroom__section-links">
+          {articles.slice(0, 8).map((a, i) => (
+            <a key={i} href={a.links.web.href} target="_blank" rel="noopener noreferrer" className="wireroom__section-link">
+              {a.headline} →
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Column section ────────────────────────────────────────────────────────────
+
+function ColumnSection() {
+  return (
+    <div className="column-section">
+      <div className="column-section__header">
+        <span className="column-section__label">The Column</span>
+        <div className="column-section__rule" />
+        <span className="column-section__tag">Weekly</span>
+      </div>
+      <p className="column-section__placeholder">
+        The Column is coming soon — a place for long-form writing about what actually happened.
+      </p>
+    </div>
+  );
+}
+
+// ── Today's slate ─────────────────────────────────────────────────────────────
+
+function TodaySlate({ fixtures }: { fixtures: ESPNFixture[] }) {
+  const navigate = useNavigate();
+
+  return (
+    <div>
+      <div className="slate-header">Today's slate</div>
+      <div>
+        {fixtures.slice(0, 8).map((f) => {
+          const comp   = f.competitions[0];
+          const home   = comp.competitors.find((c) => c.homeAway === "home")!;
+          const away   = comp.competitors.find((c) => c.homeAway === "away")!;
+          const { type: status, displayClock } = comp.status;
+          const isDone = status.state === "post";
+          const isLive = status.state === "in";
+          const time   = isDone ? "FT"
+            : isLive ? displayClock
+            : new Date(f.date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+          return (
+            <div key={f.id} className="slate-row" onClick={() => navigate(`/epl/match/${f.id}`)}>
+              <span className="slate-row__time">{time}</span>
+              <span className="slate-row__teams">
+                {home.team.shortDisplayName} · {away.team.shortDisplayName}
+              </span>
+              <span className="slate-row__league">PL</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Wire separator ────────────────────────────────────────────────────────────
+
+function WireSeparator() {
+  return (
+    <div className="wire-sep">
+      <div className="wire-sep__dot" />
+    </div>
+  );
+}
+
+// ── Mini standings ────────────────────────────────────────────────────────────
+
+function MiniStandings({ entries, gwLabel }: { entries: ESPNStandingEntry[]; gwLabel: string }) {
+  const navigate = useNavigate();
+
+  return (
+    <div>
+      <div className="standings-mini__label">Premier League · {gwLabel}</div>
+
+      <div className="standings-mini__col-heads">
+        <span>#</span><span>Club</span><span>GD</span><span>Pts</span>
+      </div>
+
+      {entries.slice(0, 4).map((entry, i) => {
+        const pos = parseInt(entry.stats.find((s) => s.name === "rank")?.displayValue ?? "") || i + 1;
+        const gd  = entry.stats.find((s) => s.name === "pointDifferential")?.displayValue ?? "–";
+        const pts = entry.stats.find((s) => s.name === "points")?.displayValue ?? "–";
+
+        return (
+          <div
+            key={entry.team.id}
+            className="standings-mini__row"
+            onClick={() => navigate(`/epl/team/${entry.team.id}`)}
+          >
+            <span className={`standings-mini__pos${pos === 1 ? " standings-mini__pos--first" : ""}`}>
+              {pos}
+            </span>
+            <span className="standings-mini__club">{entry.team.shortDisplayName}</span>
+            <span className="standings-mini__gd">{gd}</span>
+            <span className="standings-mini__pts">{pts}</span>
+          </div>
+        );
+      })}
+
+      <Link to="/epl" className="standings-mini__link">Full table →</Link>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default function Home() {
+  const [fixtures,         setFixtures]         = useState<ESPNFixture[]>([]);
+  const [standings,        setStandings]        = useState<ESPNStandingEntry[]>([]);
+  const [gwLabel,          setGwLabel]          = useState("GW1");
+  const [loadingData,      setLoadingData]      = useState(true);
+
+  // Wireroom loads separately — may call Claude if cache is cold
+  const [brief,            setBrief]            = useState<WireroomBrief | null>(null);
+  const [fallbackArticles, setFallbackArticles] = useState<ESPNArticle[]>([]);
+  const [loadingWireroom,  setLoadingWireroom]  = useState(true);
+
+  useEffect(() => {
+    // Fast: fixtures + standings
+    Promise.all([fetchFixtures(), fetchStandings()])
+      .then(([{ fixtures: f, calendar }, s]) => {
+        setFixtures(f);
+        setStandings(s);
+        const weeks = groupMatchweeks(calendar);
+        const idx   = currentMatchweekIndex(weeks);
+        if (weeks[idx]) setGwLabel(weeks[idx].label);
+      })
+      .finally(() => setLoadingData(false));
+
+    // Slower: AI wireroom brief, fallback to ESPN raw articles
+    fetchWireroom()
+      .then((b) => {
+        if (b) { setBrief(b); return; }
+        return fetchNews().then(setFallbackArticles);
+      })
+      .catch(() => fetchNews().then(setFallbackArticles))
+      .finally(() => setLoadingWireroom(false));
+  }, []);
+
+  const liveGames = fixtures.filter((f) => f.competitions[0].status.type.state === "in");
+
+  return (
+    <>
+      {liveGames.length > 0 && <LiveRail fixtures={liveGames} />}
+
+      <div className="home-grid">
+        <div className="home-editorial">
+          <WireroomBlock
+            brief={brief}
+            fallbackArticles={fallbackArticles}
+            loading={loadingWireroom}
+          />
+          <ColumnSection />
+        </div>
+
+        <div className="home-sidebar">
+          {loadingData ? (
+            <div className="space-y-3">
+              {Array.from({ length: 7 }).map((_, i) => <Skeleton key={i} height={34} />)}
+            </div>
+          ) : (
+            <>
+              <TodaySlate fixtures={fixtures} />
+              <WireSeparator />
+              <MiniStandings entries={standings} gwLabel={gwLabel} />
+            </>
+          )}
+        </div>
+      </div>
+    </>
   );
 }

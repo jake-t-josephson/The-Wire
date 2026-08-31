@@ -1,46 +1,72 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
+import { useTheme } from "../lib/theme";
 
-const LEAGUES = [
-  { id: "epl", label: "Premier League", path: "/epl" },
+const PRIMARY_LINKS = [
+  { label: "Today",     to: "/" },
+  { label: "Football",  to: "/epl" },
+  { label: "NFL",       to: "/nfl" },
+  { label: "Podcasts",  to: "/podcasts" },
 ] as const;
 
-function WireIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-    </svg>
-  );
-}
+const COMING_SOON = ["NBA"] as const;
 
 export default function Nav() {
+  const location = useLocation();
+  const { theme, toggle } = useTheme();
+  const onEpl = location.pathname.startsWith("/epl");
+
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-surface/95 backdrop-blur px-4 md:px-8 py-3 flex items-center justify-between gap-6">
-      <div className="flex items-center gap-6">
-        <NavLink to="/" className="flex items-center gap-2 text-bone font-semibold text-sm">
-          <WireIcon />
-          <span>The Wire</span>
+    <header className="site-nav">
+      <div className="site-nav__inner">
+        <NavLink
+          to="/"
+          className="site-nav__wordmark"
+          aria-label="The Wire home"
+        >
+          The Wire
         </NavLink>
 
-        <nav className="flex items-center gap-1">
-          {LEAGUES.map(({ id, label, path }) => (
-            <NavLink
-              key={id}
-              to={path}
-              className={({ isActive }) =>
-                `px-3 py-1.5 rounded text-sm transition-colors ${
-                  isActive
-                    ? "bg-surface-2 text-bone font-medium"
-                    : "text-subtle hover:text-bone hover:bg-surface-2/60"
-                }`
-              }
-            >
+        <nav className="site-nav__leagues" aria-label="Sports">
+          {PRIMARY_LINKS.map(({ label, to }) => {
+            const active = to === "/" ? location.pathname === "/"
+              : to === "/epl" ? onEpl
+              : location.pathname.startsWith(to);
+            return (
+              <NavLink
+                key={label}
+                to={to}
+                end={to === "/"}
+                className={`site-nav__link${active ? " is-active" : ""}`}
+                aria-current={active ? "page" : undefined}
+              >
+                {label}
+              </NavLink>
+            );
+          })}
+          {COMING_SOON.map((label) => (
+            <span key={label} className="site-nav__link is-disabled" aria-disabled="true">
               {label}
-            </NavLink>
+            </span>
           ))}
         </nav>
-      </div>
 
-      <span className="label-caps text-muted hidden sm:block">the wire</span>
+        <div className="site-nav__utilities">
+          <span className="site-nav__utility">Wireroom</span>
+          <span className="site-nav__utility">Column</span>
+          <button
+            type="button"
+            onClick={toggle}
+            className="site-nav__theme-toggle"
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+            aria-pressed={theme === "light"}
+          >
+            <span className="site-nav__theme-icon" aria-hidden="true" />
+            <span>{theme === "dark" ? "Light" : "Dark"}</span>
+          </button>
+        </div>
+
+        <div className="site-nav__dot" aria-hidden="true" />
+      </div>
     </header>
   );
 }

@@ -70,6 +70,14 @@ export interface ESPNArticle {
   links: { web: { href: string } };
 }
 
+export interface EPLArticle {
+  headline:    string;
+  description: string;
+  published:   string;
+  url:         string;
+  source:      string;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 export function timeAgo(dateStr: string): string {
@@ -213,13 +221,17 @@ async function get(url: string) {
 // Pass a single date (YYYYMMDD) or a range (YYYYMMDD-YYYYMMDD).
 export async function fetchFixtures(
   dates?: string
-): Promise<{ fixtures: ESPNFixture[]; calendar: string[]; season: number }> {
+): Promise<{ fixtures: ESPNFixture[]; calendar: string[]; season: number; leagueLogo: string | null }> {
   const params = dates ? `?dates=${dates}` : "";
   const data = await get(`${SPORT_BASE}/soccer/eng.1/scoreboard${params}`);
+  const logos: Array<{ href: string; rel: string[] }> = data.leagues?.[0]?.logos ?? [];
+  const darkLogo  = logos.find((l) => l.rel?.includes("dark"))?.href ?? null;
+  const lightLogo = logos.find((l) => l.rel?.includes("default"))?.href ?? null;
   return {
-    fixtures: data.events ?? [],
-    calendar: data.leagues?.[0]?.calendar ?? [],
-    season: data.season?.year ?? new Date().getFullYear(),
+    fixtures:    data.events ?? [],
+    calendar:    data.leagues?.[0]?.calendar ?? [],
+    season:      data.season?.year ?? new Date().getFullYear(),
+    leagueLogo:  darkLogo ?? lightLogo,
   };
 }
 
@@ -265,5 +277,14 @@ export async function fetchStandings(): Promise<ESPNStandingEntry[]> {
 
 export async function fetchNews(): Promise<ESPNArticle[]> {
   const data = await get(`${SPORT_BASE}/soccer/eng.1/news`);
+  return data.articles ?? [];
+}
+
+export async function fetchEPLNews(): Promise<EPLArticle[]> {
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/epl-news`, {
+    headers: { apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+  });
+  if (!res.ok) throw new Error(`EPL news ${res.status}`);
+  const data = await res.json();
   return data.articles ?? [];
 }
