@@ -1,4 +1,30 @@
-# React + TypeScript + Vite
+# The Wire
+
+The Wire is a sports scores, standings, news, editorial, and podcast application built with React, TypeScript, Vite, Tailwind CSS, and Supabase.
+
+Before making structural or UI changes, read:
+
+- [`DESIGN.md`](./DESIGN.md) — brand, visual language, typography, color, and content rules.
+- [`ARCHITECTURE.md`](./ARCHITECTURE.md) — application layers, dependency direction, component ownership, and target structure.
+- [`CLAUDE.md`](./CLAUDE.md) — operational rules and verification checklist for contributors and coding agents.
+
+The internal UI showcase is available at `/ui` during local development.
+
+## Development
+
+```bash
+npm install
+npm run dev
+npm run build
+npm run lint
+npm run check
+```
+
+## Current architecture work
+
+The repository is moving incrementally toward the structure documented in `ARCHITECTURE.md`. New work should follow the target boundaries even when nearby older code has not yet been migrated.
+
+## Vite reference
 
 This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
 

@@ -1,22 +1,24 @@
 import { useState } from "react";
-import { usePlayer } from "../../lib/playerContext";
+import { usePlayer } from "../../lib/usePlayer";
 import { formatDuration } from "../../lib/podcasts";
+import { Button } from "../ui/Button";
+import { IconButton } from "../ui/IconButton";
 
 const RATES = [1, 1.25, 1.5, 2];
 
 function ProgressBar({ position, duration, onSeek }: { position: number; duration: number; onSeek: (s: number) => void }) {
   const pct = duration > 0 ? (position / duration) * 100 : 0;
-
-  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect  = e.currentTarget.getBoundingClientRect();
-    const ratio = (e.clientX - rect.left) / rect.width;
-    onSeek(ratio * duration);
-  };
-
   return (
-    <div className="player-bar__progress" onClick={handleClick}>
-      <div className="player-bar__progress-fill" style={{ width: `${pct}%` }} />
-    </div>
+    <input
+      className="player-bar__progress"
+      type="range"
+      min={0}
+      max={Math.max(duration, 1)}
+      value={Math.min(position, Math.max(duration, 1))}
+      aria-label="Episode progress"
+      aria-valuetext={`${Math.round(pct)}% played`}
+      onChange={(event) => onSeek(Number(event.currentTarget.value))}
+    />
   );
 }
 
@@ -54,11 +56,11 @@ export function PlayerBar() {
 
         {/* Controls */}
         <div className="player-bar__controls">
-          <button className="player-bar__btn" onClick={() => skip(-15)} aria-label="Back 15s">−15</button>
-          <button className="player-bar__btn player-bar__btn--play" onClick={toggle} aria-label={playing ? "Pause" : "Play"}>
+          <Button variant="bare" className="player-bar__btn" onClick={() => skip(-15)} aria-label="Back 15 seconds">−15</Button>
+          <IconButton variant="bare" className="player-bar__btn player-bar__btn--play" onClick={toggle} aria-label={playing ? "Pause" : "Play"}>
             {playing ? "▐▐" : "▶"}
-          </button>
-          <button className="player-bar__btn" onClick={() => skip(30)} aria-label="Forward 30s">+30</button>
+          </IconButton>
+          <Button variant="bare" className="player-bar__btn" onClick={() => skip(30)} aria-label="Forward 30 seconds">+30</Button>
         </div>
 
         {/* Time + speed */}
@@ -67,7 +69,7 @@ export function PlayerBar() {
             {formatDuration(Math.floor(position))}
             {duration > 0 && ` / ${formatDuration(Math.floor(duration))}`}
           </span>
-          <button className="player-bar__rate" onClick={cycleRate}>{rate}×</button>
+          <Button variant="bare" className="player-bar__rate" onClick={cycleRate} aria-label={`Playback speed ${rate} times`}>{rate}×</Button>
         </div>
       </div>
     </div>

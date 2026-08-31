@@ -1,6 +1,7 @@
-import { createContext, useContext, useRef, useState, useCallback, type ReactNode } from "react";
+import { useRef, useState, useCallback, type ReactNode } from "react";
 import type { PodcastEpisode, PodcastFeed } from "./podcasts";
 import { upsertProgress } from "./podcasts";
+import { PlayerContext } from "./playerContextValue";
 
 interface PlayerState {
   episode:  PodcastEpisode | null;
@@ -9,17 +10,6 @@ interface PlayerState {
   position: number;   // seconds — live, updated frequently
   duration: number;   // seconds
 }
-
-interface PlayerActions {
-  load:    (episode: PodcastEpisode, feed: PodcastFeed, resumeAt?: number) => void;
-  toggle:  () => void;
-  seek:    (seconds: number) => void;
-  skip:    (delta: number) => void;
-  setRate: (rate: number) => void;
-  audioRef: React.RefObject<HTMLAudioElement | null>;
-}
-
-const PlayerCtx = createContext<(PlayerState & PlayerActions) | null>(null);
 
 export function PlayerProvider({ children }: { children: ReactNode }) {
   const audioRef  = useRef<HTMLAudioElement | null>(null);
@@ -87,7 +77,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   const toggle = useCallback(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    audio.paused ? audio.play() : audio.pause();
+    if (audio.paused) void audio.play();
+    else audio.pause();
   }, []);
 
   const seek = useCallback((seconds: number) => {
@@ -108,15 +99,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <PlayerCtx.Provider value={{ ...state, load, toggle, seek, skip, setRate, audioRef }}>
+    <PlayerContext.Provider value={{ ...state, load, toggle, seek, skip, setRate, audioRef }}>
       {children}
-      <audio ref={audioRef} preload="metadata" style={{ display: "none" }} />
-    </PlayerCtx.Provider>
+      <audio ref={audioRef} preload="metadata" className="visually-hidden" />
+    </PlayerContext.Provider>
   );
-}
-
-export function usePlayer() {
-  const ctx = useContext(PlayerCtx);
-  if (!ctx) throw new Error("usePlayer must be inside PlayerProvider");
-  return ctx;
 }

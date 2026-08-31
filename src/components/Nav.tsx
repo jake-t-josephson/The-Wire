@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useTheme } from "../lib/theme";
+import { Button } from "./ui/Button";
 
 const PRIMARY_LINKS = [
   { label: "Today",     to: "/" },
@@ -53,8 +54,8 @@ export default function Nav() {
         <div className="site-nav__utilities">
           <span className="site-nav__utility">Wireroom</span>
           <span className="site-nav__utility">Column</span>
-          <button
-            type="button"
+          <Button
+            variant="bare"
             onClick={toggle}
             className="site-nav__theme-toggle"
             aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
@@ -62,7 +63,7 @@ export default function Nav() {
           >
             <span className="site-nav__theme-icon" aria-hidden="true" />
             <span>{theme === "dark" ? "Light" : "Dark"}</span>
-          </button>
+          </Button>
         </div>
 
         <div className="site-nav__dot" aria-hidden="true" />

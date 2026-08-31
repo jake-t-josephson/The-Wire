@@ -1,0 +1,65 @@
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Ground */
+  --color-ink:      #0E0F10;
+  --color-slate:    #151819;
+  --color-hairline: #1E2325;
+  --color-steel:    #2A2F31;
+
+  /* Text */
+  --color-muted:    #6E7476;
+  --color-silver:   #A8AEB0;
+  --color-bone:     #EFEBE4;
+
+  /* Accents */
+  --color-signal:   #EE5A16;
+  --color-up:       #6DA36D;
+  --color-down:     #B4614A;
+  --color-oxblood:  #7A2B2B;
+  --color-amber:    #D97706;
+
+  /* Fixed semantic surfaces */
+  --color-editorial-bg:      #EFEBE4;
+  --color-editorial-text:    #0E0F10;
+  --color-editorial-strong:  #25282A;
+  --color-editorial-muted:   #5A5F61;
+  --color-player-bg:         #0A0B0C;
+
+  /* Typography */
+  --font-display: 'Fjalla One', sans-serif;
+  --font-sans:    system-ui, -apple-system, sans-serif;
+  --font-mono:    'DM Mono', ui-monospace, monospace;
+  --font-serif:   'Crimson Pro', Georgia, serif;
+
+  /* Shape and motion */
+  --radius-control: 0.25rem;
+  --radius-panel: 0.375rem;
+  --ease-ui: cubic-bezier(0.2, 0, 0, 1);
+}
+
+:root {
+  --page-max: 90rem;
+  --page-gutter: 2.125rem;
+  --focus-ring: 0 0 0 2px var(--color-ink), 0 0 0 4px var(--color-signal);
+  --control-height-sm: 1.75rem;
+  --control-height-md: 2.25rem;
+}
+
+/* ── Light mode ──────────────────────────────────────────────────────────────── */
+
+[data-theme="light"] {
+  --color-ink:      #F2EDE5;
+  --color-slate:    #EDE8DF;
+  --color-hairline: #D6D0C6;
+  --color-steel:    #C8C2B8;
+
+  --color-muted:    #828680;
+  --color-silver:   #4A4E50;
+  --color-bone:     #0E0F10;
+
+  --color-up:       #3D7A3D;
+  --color-down:     #8A3A27;
+  --color-amber:    #B05A10;
+
+}

@@ -62,7 +62,7 @@ function StatRow({ label, home, away }: { label: string; home: number; away: num
         <div className="flex-1 flex justify-end">
           <div className="h-1 rounded-l-full bg-signal transition-all duration-500" style={{ width: `${homeW}%` }} />
         </div>
-        <div className="w-px h-2 bg-border flex-shrink-0" />
+        <div className="w-px h-2 bg-hairline flex-shrink-0" />
         <div className="flex-1">
           <div className="h-1 rounded-r-full bg-silver transition-all duration-500" style={{ width: `${awayW}%` }} />
         </div>
@@ -82,7 +82,6 @@ export default function MatchDetail() {
 
   useEffect(() => {
     if (!eventId) return;
-    setLoading(true);
     fetchMatchSummary(eventId)
       .then((s) => { setSummary(s); if (!s) setError(true); })
       .catch(() => setError(true))
@@ -202,11 +201,11 @@ function MatchContent({ summary }: { summary: ESPNMatchSummary }) {
         </div>
 
         {/* Meta */}
-        <div className="mt-4 pt-4 border-t border-border flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+        <div className="mt-4 pt-4 border-t border-hairline flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
           <span className="text-xs text-muted">{kickoff}</span>
           {venue && (
             <>
-              <span className="text-border">·</span>
+              <span className="text-hairline">·</span>
               <span className="text-xs text-muted">{venue}</span>
             </>
           )}
@@ -219,11 +218,11 @@ function MatchContent({ summary }: { summary: ESPNMatchSummary }) {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full bg-signal" />
-              <span className="text-xs font-medium text-subtle">{homeTeam.shortDisplayName}</span>
+              <span className="text-xs font-medium text-silver">{homeTeam.shortDisplayName}</span>
             </div>
             <SectionLabel>Match Stats</SectionLabel>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-subtle">{awayTeam.shortDisplayName}</span>
+              <span className="text-xs font-medium text-silver">{awayTeam.shortDisplayName}</span>
               <div className="w-2.5 h-2.5 rounded-full bg-silver" />
             </div>
           </div>
@@ -231,7 +230,7 @@ function MatchContent({ summary }: { summary: ESPNMatchSummary }) {
           {!hasStats ? (
             <p className="text-sm text-muted text-center py-6">Stats not yet available.</p>
           ) : (
-            <div className="divide-y divide-border/40">
+            <div className="divide-y divide-hairline/40">
               {homePoss > 0 && (
                 <div className="py-1">
                   <PossessionBar home={homePoss} away={awayPoss} />

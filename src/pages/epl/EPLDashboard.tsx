@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   fetchFixtures, fetchStandings, fetchEPLNews,
-  groupMatchweeks, currentMatchweekIndex, groupByDate, timeAgo,
+  groupMatchweeks, currentMatchweekIndex, groupByDate,
   computeMatchweekStats, computePositionChanges,
   type Matchweek, type ESPNFixture, type ESPNStandingEntry, type EPLArticle,
   type MatchweekStats,
@@ -12,12 +12,15 @@ import { resolveChannel, faviconUrl } from "../../lib/channels";
 import { PageContainer, PageHeader } from "../../components/layout/Page";
 import { StatusDot } from "../../components/sports/StatusDot";
 import { TeamCrest } from "../../components/sports/TeamCrest";
-import { Button } from "../../components/ui/Button";
 import { Badge } from "../../components/ui/Badge";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { Tabs } from "../../components/ui/Tabs";
 import { Eyebrow, SectionLabel } from "../../components/ui/Typography";
+import { EPL_SOURCE_META } from "../../lib/sourceMeta";
+import { PeriodNavigator } from "../../components/sports/PeriodNavigator";
+import { NewsFeed } from "../../components/sports/NewsFeed";
+import { SportDashboardLayout, SportDashboardMain, SportDashboardRail } from "../../components/layout/SportDashboardLayout";
 
 // ── Fixture row ───────────────────────────────────────────────────────────────
 
@@ -34,8 +37,14 @@ function ChannelBadge({ name }: { name: string }) {
   );
 }
 
+function matchweekDateRange(matchweek: Matchweek) {
+  const format = (date: string) => new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const start = format(matchweek.dates[0]);
+  const end = matchweek.dates.length > 1 ? format(matchweek.dates[matchweek.dates.length - 1]) : null;
+  return end ? `${start} – ${end}` : start;
+}
+
 function FixtureRow({ fixture }: { fixture: ESPNFixture }) {
-  const navigate = useNavigate();
   const comp    = fixture.competitions[0];
   const status  = comp.status.type;
   const home    = comp.competitors.find((c) => c.homeAway === "home")!;
@@ -54,8 +63,7 @@ function FixtureRow({ fixture }: { fixture: ESPNFixture }) {
 
   return (
     <div
-      onClick={() => navigate(`/epl/match/${fixture.id}`)}
-      className="grid cursor-pointer transition-colors"
+      className="relative grid transition-colors"
       style={{
         gridTemplateColumns: "1fr 96px 1fr",
         gap: 14,
@@ -66,6 +74,7 @@ function FixtureRow({ fixture }: { fixture: ESPNFixture }) {
         marginLeft: isLive ? 0 : 0,
       }}
     >
+      <Link className="absolute inset-0" to={`/epl/match/${fixture.id}`} aria-label={`${home.team.displayName} vs ${away.team.displayName}`} />
       {/* Home */}
       <div className="flex items-center justify-end gap-[11px] min-w-0">
         <span
@@ -83,7 +92,7 @@ function FixtureRow({ fixture }: { fixture: ESPNFixture }) {
           <>
             <span className="font-display text-bone" style={{ fontSize: 22, lineHeight: 1 }}>{kickoff}</span>
             {channels.length > 0 && (
-              <div className="flex items-center gap-1.5 mt-0.5">
+              <div className="relative z-10 flex items-center gap-1.5 mt-0.5">
                 {channels.map((ch) => <ChannelBadge key={ch} name={ch} />)}
               </div>
             )}
@@ -135,30 +144,6 @@ function FixtureRow({ fixture }: { fixture: ESPNFixture }) {
 
 // ── Matchweek navigator ───────────────────────────────────────────────────────
 
-function MatchweekNav({ matchweeks, index, onChange }: {
-  matchweeks: Matchweek[]; index: number; onChange: (i: number) => void;
-}) {
-  const mw = matchweeks[index];
-  if (!mw) return null;
-  const startLabel = new Date(mw.dates[0]).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const endLabel   = mw.dates.length > 1
-    ? new Date(mw.dates[mw.dates.length - 1]).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-    : null;
-
-  return (
-    <div className="flex items-center gap-4">
-      <Button iconOnly aria-label="Previous matchweek" onClick={() => onChange(Math.max(0, index - 1))} disabled={index === 0}>‹</Button>
-      <div className="text-center" style={{ minWidth: 112 }}>
-        <div className="font-display uppercase text-bone" style={{ fontSize: 26, lineHeight: 1 }}>{mw.label}</div>
-        <div className="font-mono uppercase text-muted mt-1" style={{ fontSize: 8.5, letterSpacing: "0.14em" }}>
-          {startLabel}{endLabel ? ` – ${endLabel}` : ""}
-        </div>
-      </div>
-      <Button iconOnly aria-label="Next matchweek" onClick={() => onChange(Math.min(matchweeks.length - 1, index + 1))} disabled={index === matchweeks.length - 1}>›</Button>
-    </div>
-  );
-}
-
 // ── Standings ─────────────────────────────────────────────────────────────────
 
 function getStat(entry: ESPNStandingEntry, name: string) {
@@ -181,7 +166,6 @@ function StandingsTable({ entries, mwStats, posChanges }: {
   mwStats: Map<string, MatchweekStats>;
   posChanges: Map<string, number>;
 }) {
-  const navigate = useNavigate();
   // grid: 34px 1fr 26px 26px 26px 26px 34px 34px
   const grid = "34px 1fr 26px 26px 26px 26px 34px 34px";
 
@@ -212,9 +196,9 @@ function StandingsTable({ entries, mwStats, posChanges }: {
         const pts = getStat(entry, "points")?.displayValue        ?? "–";
 
         return (
-          <div
+          <Link
             key={entry.team.id}
-            onClick={() => navigate(`/epl/team/${entry.team.id}`)}
+            to={`/epl/team/${entry.team.id}`}
             className="grid items-center cursor-pointer transition-colors hover:bg-slate"
             style={{
               gridTemplateColumns: grid,
@@ -258,7 +242,7 @@ function StandingsTable({ entries, mwStats, posChanges }: {
               {mw && mw.pts === 3 && <span className="font-mono text-up" style={{ fontSize: 8 }}>+3</span>}
               {mw && mw.pts === 1 && <span className="font-mono text-amber" style={{ fontSize: 8 }}>+1</span>}
             </div>
-          </div>
+          </Link>
         );
       })}
     </div>
@@ -266,102 +250,6 @@ function StandingsTable({ entries, mwStats, posChanges }: {
 }
 
 // ── News ──────────────────────────────────────────────────────────────────────
-
-const EPL_SOURCE_META: Record<string, { color: string; logo: string; label: string }> = {
-  ESPN:          { color: "#dd0300",  logo: faviconUrl("espn.com"),          label: "ESPN" },
-  "The Guardian":{ color: "#082864",  logo: faviconUrl("theguardian.com"),   label: "The Guardian" },
-  "BBC Sport":   { color: "#fdd12c",  logo: faviconUrl("bbc.co.uk"),         label: "BBC Sport" },
-  "Sky Sports":  { color: "#030fa2",  logo: faviconUrl("skysports.com"),     label: "Sky Sports" },
-  "The Ringer":  { color: "#05b113",  logo: faviconUrl("theringer.com"),     label: "The Ringer" },
-};
-
-const EPL_ALL_SOURCES = Object.keys(EPL_SOURCE_META);
-const EPL_PAGE_SIZE   = 10;
-
-function NewsList({ articles }: { articles: EPLArticle[] }) {
-  const [active,  setActive]  = useState<Set<string>>(new Set(EPL_ALL_SOURCES));
-  const [visible, setVisible] = useState(EPL_PAGE_SIZE);
-
-  const toggle = (src: string) => {
-    setActive((prev) => {
-      const next = new Set(prev);
-      if (next.has(src)) { if (next.size > 1) next.delete(src); }
-      else next.add(src);
-      return next;
-    });
-    setVisible(EPL_PAGE_SIZE);
-  };
-
-  const filtered = articles.filter((a) => active.has(a.source));
-  const shown    = filtered.slice(0, visible);
-  const hasMore  = visible < filtered.length;
-
-  return (
-    <div>
-      {/* Source filter */}
-      <div className="flex flex-wrap gap-2 mb-5">
-        {EPL_ALL_SOURCES.map((src) => {
-          const meta = EPL_SOURCE_META[src];
-          const on   = active.has(src);
-          return (
-            <button
-              key={src}
-              onClick={() => toggle(src)}
-              className="flex items-center gap-[6px] transition-opacity"
-              style={{
-                padding: "5px 10px",
-                borderRadius: 3,
-                border: `1px solid ${on ? meta.color : "var(--color-steel)"}`,
-                background: on ? `color-mix(in srgb, ${meta.color} 12%, transparent)` : "transparent",
-                opacity: on ? 1 : 0.45,
-                cursor: "pointer",
-              }}
-            >
-              <img src={meta.logo} alt={meta.label} style={{ width: 12, height: 12, borderRadius: 2, objectFit: "contain" }} />
-              <span className="font-mono uppercase" style={{ fontSize: 8, letterSpacing: "0.14em", color: on ? meta.color : "var(--color-muted)" }}>
-                {meta.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {shown.map((a, i) => {
-        const meta = EPL_SOURCE_META[a.source];
-        return (
-          <a key={i} href={a.url} target="_blank" rel="noopener noreferrer"
-            className="block group" style={{ padding: "14px 0", borderBottom: "1px solid var(--color-hairline)" }}>
-            <div className="flex items-center gap-2 mb-1">
-              {meta && <img src={meta.logo} alt={meta.label} style={{ width: 12, height: 12, borderRadius: 2, objectFit: "contain", flexShrink: 0 }} />}
-              <span className="font-mono uppercase" style={{ fontSize: 7.5, letterSpacing: "0.14em", color: meta?.color ?? "var(--color-muted)", flexShrink: 0 }}>
-                {a.source}
-              </span>
-              <span className="font-mono text-muted" style={{ fontSize: 7.5, letterSpacing: "0.12em" }}>{timeAgo(a.published)}</span>
-            </div>
-            <p className="font-display uppercase text-bone group-hover:text-silver transition-colors leading-snug" style={{ fontSize: 17, lineHeight: 1.15 }}>
-              {a.headline}
-            </p>
-            {a.description && (
-              <p className="font-serif text-silver mt-1.5 line-clamp-2" style={{ fontSize: 14, lineHeight: 1.45 }}>
-                {a.description}
-              </p>
-            )}
-          </a>
-        );
-      })}
-
-      {hasMore && (
-        <button
-          onClick={() => setVisible((v) => v + EPL_PAGE_SIZE)}
-          className="font-mono uppercase text-muted hover:text-bone transition-colors w-full text-center"
-          style={{ padding: "14px 0", fontSize: 9, letterSpacing: "0.18em" }}
-        >
-          Load More
-        </button>
-      )}
-    </div>
-  );
-}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -378,7 +266,7 @@ export default function EPLDashboard() {
   const [news,              setNews]              = useState<EPLArticle[]>([]);
   const [loadingFix,        setLoadingFix]        = useState(true);
   const [loadingStd,        setLoadingStd]        = useState(true);
-  const [loadingSnap,       setLoadingSnap]       = useState(false);
+  const [loadingSnap,       setLoadingSnap]       = useState(true);
   const [loadingNews,       setLoadingNews]       = useState(true);
   const [errorFix,          setErrorFix]          = useState(false);
   const [errorStd,          setErrorStd]          = useState(false);
@@ -411,11 +299,6 @@ export default function EPLDashboard() {
     const mw = matchweeks[mwIndex];
     const isHistorical = mwIndex < liveMwIndex;
 
-    setLoadingFix(true);
-    setErrorFix(false);
-    setSnapshotStandings([]);
-    setStandingsMode(isHistorical ? "snapshot" : "live");
-
     if (isHistorical) {
       fetchHistoricalFixtures(mw.number)
         .then((f) => {
@@ -436,7 +319,6 @@ export default function EPLDashboard() {
         .finally(() => setLoadingFix(false));
     }
 
-    setLoadingSnap(true);
     fetchHistoricalStandings(mw.number, season)
       .then(setSnapshotStandings)
       .catch(() => setSnapshotStandings([]))
@@ -449,6 +331,15 @@ export default function EPLDashboard() {
   const mwStats    = standingsMode === "live" ? computeMatchweekStats(fixtures) : new Map<string, MatchweekStats>();
   const posChanges = standingsMode === "live" ? computePositionChanges(standings, mwStats) : new Map<string, number>();
   const currentMw  = mwIndex !== null ? matchweeks[mwIndex] : null;
+
+  const changeMatchweek = (nextIndex: number) => {
+    setLoadingFix(true);
+    setLoadingSnap(true);
+    setErrorFix(false);
+    setSnapshotStandings([]);
+    setStandingsMode(liveMwIndex !== null && nextIndex < liveMwIndex ? "snapshot" : "live");
+    setMwIndex(nextIndex);
+  };
 
   return (
     <PageContainer>
@@ -465,7 +356,16 @@ export default function EPLDashboard() {
             </div>
           )}
           {matchweeks.length > 0 && mwIndex !== null && (
-            <MatchweekNav matchweeks={matchweeks} index={mwIndex} onChange={setMwIndex} />
+            <PeriodNavigator
+              label={matchweeks[mwIndex]?.label ?? "Matchweek"}
+              detail={matchweeks[mwIndex] ? matchweekDateRange(matchweeks[mwIndex]) : undefined}
+              previousLabel="Previous matchweek"
+              nextLabel="Next matchweek"
+              onPrevious={() => changeMatchweek(Math.max(0, mwIndex - 1))}
+              onNext={() => changeMatchweek(Math.min(matchweeks.length - 1, mwIndex + 1))}
+              previousDisabled={mwIndex === 0}
+              nextDisabled={mwIndex === matchweeks.length - 1}
+            />
           )}
           </>
         }
@@ -475,6 +375,7 @@ export default function EPLDashboard() {
       <Tabs
         label="Premier League sections"
         value="fixtures"
+        panelId="epl-fixtures-panel"
         items={[
           { label: "Fixtures", value: "fixtures" },
           { label: "Table", value: "table", disabled: true },
@@ -485,9 +386,9 @@ export default function EPLDashboard() {
       />
 
       {/* Content grid */}
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_452px]">
+      <SportDashboardLayout id="epl-fixtures-panel" role="tabpanel" aria-label="Fixtures">
         {/* Left: Fixtures */}
-        <div className="py-[26px] lg:pr-[34px]">
+        <SportDashboardMain>
           <SectionLabel className="mb-5">
             Fixtures{currentMw ? ` — ${currentMw.label}` : ""}
           </SectionLabel>
@@ -517,13 +418,13 @@ export default function EPLDashboard() {
           {!loadingNews && news.length > 0 && (
             <div className="mt-10">
               <SectionLabel className="mb-4">News</SectionLabel>
-              <NewsList articles={news} />
+              <NewsFeed articles={news} sources={EPL_SOURCE_META} />
             </div>
           )}
-        </div>
+        </SportDashboardMain>
 
         {/* Right: Standings */}
-        <aside className="border-t border-hairline py-[26px] lg:border-l lg:border-t-0 lg:pl-[26px]">
+        <SportDashboardRail>
           <div className="mb-[18px] flex items-center gap-3">
             <SectionLabel>Standings</SectionLabel>
             <div className="ml-auto">
@@ -566,8 +467,8 @@ export default function EPLDashboard() {
               </div>
             </div>
           )}
-        </aside>
-      </div>
+        </SportDashboardRail>
+      </SportDashboardLayout>
     </PageContainer>
   );
 }

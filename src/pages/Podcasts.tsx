@@ -4,8 +4,9 @@ import {
   formatDuration, formatPubDate,
   type PodcastFeed, type PodcastEpisode, type PodcastProgress,
 } from "../lib/podcasts";
-import { usePlayer } from "../lib/playerContext";
+import { usePlayer } from "../lib/usePlayer";
 import { Skeleton } from "../components/ui/Skeleton";
+import { Button } from "../components/ui/Button";
 
 // ── Feed selector ─────────────────────────────────────────────────────────────
 
@@ -19,7 +20,8 @@ function FeedCard({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button
+      variant="bare"
       className={`podcast-feed-card${selected ? " podcast-feed-card--active" : ""}`}
       onClick={onClick}
     >
@@ -34,7 +36,7 @@ function FeedCard({
           <span key={l} className="podcast-feed-card__league">{l.toUpperCase()}</span>
         ))}
       </div>
-    </button>
+    </Button>
   );
 }
 
@@ -56,7 +58,7 @@ function EpisodeRow({
     : 0;
 
   return (
-    <div className={`episode-row${active ? " episode-row--active" : ""}`} onClick={onPlay}>
+    <Button variant="bare" className={`episode-row${active ? " episode-row--active" : ""}`} onClick={onPlay}>
       <div className="episode-row__main">
         <div className="episode-row__title">{episode.title}</div>
         <div className="episode-row__meta">
@@ -70,10 +72,10 @@ function EpisodeRow({
           </div>
         )}
       </div>
-      <button className="episode-row__play" aria-label={active ? "Playing" : "Play"}>
+      <span className="episode-row__play" aria-hidden="true">
         {active ? "▐▐" : "▶"}
-      </button>
-    </div>
+      </span>
+    </Button>
   );
 }
 
@@ -91,13 +93,18 @@ export default function Podcasts() {
 
   useEffect(() => {
     fetchFeeds()
-      .then((f) => { setFeeds(f); if (f.length > 0) setSelectedFeed(f[0]); })
+      .then((f) => {
+        setFeeds(f);
+        if (f.length > 0) {
+          setLoadingEps(true);
+          setSelectedFeed(f[0]);
+        }
+      })
       .finally(() => setLoadingFeeds(false));
   }, []);
 
   useEffect(() => {
     if (!selectedFeed) return;
-    setLoadingEps(true);
     fetchEpisodes(selectedFeed.id)
       .then(async (eps) => {
         setEpisodes(eps);
@@ -111,6 +118,11 @@ export default function Podcasts() {
     if (!selectedFeed) return;
     const prog = progressMap.get(episode.guid);
     load(episode, selectedFeed, prog?.position_seconds ?? 0);
+  };
+
+  const selectFeed = (feed: PodcastFeed) => {
+    setLoadingEps(true);
+    setSelectedFeed(feed);
   };
 
   return (
@@ -131,7 +143,7 @@ export default function Podcasts() {
               key={f.id}
               feed={f}
               selected={selectedFeed?.id === f.id}
-              onClick={() => setSelectedFeed(f)}
+              onClick={() => selectFeed(f)}
             />
           ))
         }

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { fetchTeam, fetchTeamFixtures, type TeamInfo, type TeamFixture } from "../../lib/supabase";
 import { fetchStandings, fetchFixtures, type ESPNStandingEntry } from "../../lib/espn";
 import { PageContainer } from "../../components/layout/Page";
 import { TeamCrest } from "../../components/sports/TeamCrest";
 import { Button } from "../../components/ui/Button";
+import { IconButton } from "../../components/ui/IconButton";
 import { Panel } from "../../components/ui/Panel";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { SectionLabel } from "../../components/ui/Typography";
@@ -149,7 +150,7 @@ function TeamContent({
         </div>
 
         {standing && (
-          <div className="mt-5 pt-4 border-t border-border grid grid-cols-6 gap-1 text-center">
+          <div className="mt-5 pt-4 border-t border-hairline grid grid-cols-6 gap-1 text-center">
             {[
               ["MP", mp], ["W", w], ["D", d], ["L", l],
               ["GD", gd !== null && gd >= 0 ? `+${gd}` : gd], ["GF/GA", gf !== null ? `${gf}/${ga}` : "–"],
@@ -172,16 +173,15 @@ function TeamContent({
               const r = resultFor(f);
               if (!r) return null;
               return (
-                <Button
+                <IconButton
                   key={f.apiId}
                   onClick={() => navigate(`/epl/match/${f.apiId}`)}
                   title={`GW${f.matchweek} vs ${f.opponent.shortName} ${f.teamScore}–${f.oppScore}`}
                   aria-label={`Matchweek ${f.matchweek}, ${r}`}
-                  iconOnly
                   className={`h-8 min-h-8 w-8 ${resultColor(r)}`}
                 >
                   {r}
-                </Button>
+                </IconButton>
               );
             })}
           </div>
@@ -193,7 +193,6 @@ function TeamContent({
         <FixtureTable
           title="Results"
           fixtures={[...played].reverse()}
-          navigate={navigate}
         />
       )}
 
@@ -202,7 +201,6 @@ function TeamContent({
         <FixtureTable
           title="Upcoming"
           fixtures={upcoming}
-          navigate={navigate}
         />
       )}
     </div>
@@ -210,16 +208,15 @@ function TeamContent({
 }
 
 function FixtureTable({
-  title, fixtures, navigate,
+  title, fixtures,
 }: {
   title: string;
   fixtures: TeamFixture[];
-  navigate: ReturnType<typeof useNavigate>;
 }) {
   return (
     <Panel className="p-5">
       <SectionLabel className="mb-3">{title}</SectionLabel>
-      <div className="space-y-0 divide-y divide-border/40">
+      <div className="space-y-0 divide-y divide-hairline/40">
         {fixtures.map((f) => {
           const r     = resultFor(f);
           const date  = new Date(f.kickoff).toLocaleDateString("en-US", {
@@ -228,10 +225,10 @@ function FixtureTable({
           const done  = f.status === "finished";
 
           return (
-            <div
+            <Link
               key={f.apiId}
-              onClick={() => navigate(`/epl/match/${f.apiId}`)}
-              className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-surface-2/40 transition-colors rounded -mx-1 px-1"
+              to={`/epl/match/${f.apiId}`}
+              className="flex items-center gap-3 py-2.5 cursor-pointer hover:bg-steel/40 transition-colors rounded -mx-1 px-1"
             >
               {/* GW + date */}
               <div className="w-16 flex-shrink-0">
@@ -256,7 +253,7 @@ function FixtureTable({
               <div className="flex items-center gap-2 flex-shrink-0">
                 {done && f.teamScore !== null && f.oppScore !== null ? (
                   <>
-                    <span className="text-sm font-mono text-subtle tabular-nums">
+                    <span className="text-sm font-mono text-silver tabular-nums">
                       {f.teamScore}–{f.oppScore}
                     </span>
                     {r && (
@@ -271,7 +268,7 @@ function FixtureTable({
                   </span>
                 )}
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>

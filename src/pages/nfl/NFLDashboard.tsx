@@ -4,8 +4,7 @@ import {
   groupByDivision, weekDateRange, getStat, NFL_TOTAL_WEEKS,
   type NFLGame, type NFLStandingEntry, type NFLConference, type NFLArticle,
 } from "../../lib/nfl";
-import { timeAgo } from "../../lib/espn";
-import { resolveChannel, faviconUrl } from "../../lib/channels"; // faviconUrl used in ChannelIcon
+import { resolveChannel, faviconUrl } from "../../lib/channels";
 import { PageContainer, PageHeader } from "../../components/layout/Page";
 import { TeamCrest } from "../../components/sports/TeamCrest";
 import { StatusDot } from "../../components/sports/StatusDot";
@@ -13,6 +12,10 @@ import { Button } from "../../components/ui/Button";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { Eyebrow, SectionLabel } from "../../components/ui/Typography";
+import { NFL_SOURCE_META } from "../../lib/sourceMeta";
+import { PeriodNavigator } from "../../components/sports/PeriodNavigator";
+import { NewsFeed } from "../../components/sports/NewsFeed";
+import { SportDashboardLayout, SportDashboardMain, SportDashboardRail } from "../../components/layout/SportDashboardLayout";
 
 // ── Game row ──────────────────────────────────────────────────────────────────
 
@@ -136,146 +139,7 @@ function GameRow({ game }: { game: NFLGame }) {
 
 // ── News ──────────────────────────────────────────────────────────────────────
 
-const SOURCE_META: Record<string, { color: string; logo: string; label: string }> = {
-  ESPN:            { color: "#dd0300",             logo: faviconUrl("espn.com"),          label: "ESPN" },
-  ProFootballTalk: { color: "var(--color-bone)",   logo: "/brand/pft-logo.webp",          label: "ProFootballTalk" },
-  "The Ringer":    { color: "#05b113",             logo: faviconUrl("theringer.com"),     label: "The Ringer" },
-};
-
-const ALL_SOURCES = Object.keys(SOURCE_META);
-const PAGE_SIZE   = 10;
-
-function NewsList({ articles }: { articles: NFLArticle[] }) {
-  const [active,  setActive]  = useState<Set<string>>(new Set(ALL_SOURCES));
-  const [visible, setVisible] = useState(PAGE_SIZE);
-
-  const toggle = (src: string) => {
-    setActive((prev) => {
-      const next = new Set(prev);
-      if (next.has(src)) { if (next.size > 1) next.delete(src); }
-      else next.add(src);
-      return next;
-    });
-    setVisible(PAGE_SIZE);
-  };
-
-  const filtered = articles.filter((a) => active.has(a.source));
-  const shown    = filtered.slice(0, visible);
-  const hasMore  = visible < filtered.length;
-
-  return (
-    <div>
-      {/* Source filter */}
-      <div className="flex flex-wrap gap-2 mb-5">
-        {ALL_SOURCES.map((src) => {
-          const meta = SOURCE_META[src];
-          const on   = active.has(src);
-          return (
-            <button
-              key={src}
-              onClick={() => toggle(src)}
-              className="flex items-center gap-[6px] transition-opacity"
-              style={{
-                padding: "5px 10px",
-                borderRadius: 3,
-                border: `1px solid ${on ? meta.color : "var(--color-steel)"}`,
-                background: on ? "color-mix(in srgb, " + meta.color + " 12%, transparent)" : "transparent",
-                opacity: on ? 1 : 0.45,
-                cursor: "pointer",
-              }}
-            >
-              <img
-                src={meta.logo}
-                alt={meta.label}
-                style={{ width: 12, height: 12, borderRadius: 2, objectFit: "contain" }}
-              />
-              <span
-                className="font-mono uppercase"
-                style={{ fontSize: 8, letterSpacing: "0.14em", color: on ? meta.color : "var(--color-muted)" }}
-              >
-                {meta.label}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Article list */}
-      {shown.map((a, i) => {
-        const meta = SOURCE_META[a.source];
-        return (
-          <a
-            key={i}
-            href={a.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block group"
-            style={{ padding: "14px 0", borderBottom: "1px solid var(--color-hairline)" }}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              {meta && (
-                <img
-                  src={meta.logo}
-                  alt={meta.label}
-                  style={{ width: 12, height: 12, borderRadius: 2, objectFit: "contain", flexShrink: 0 }}
-                />
-              )}
-              <span
-                className="font-mono uppercase"
-                style={{ fontSize: 7.5, letterSpacing: "0.14em", color: meta?.color ?? "var(--color-muted)", flexShrink: 0 }}
-              >
-                {a.source}
-              </span>
-              <span className="font-mono text-muted" style={{ fontSize: 7.5, letterSpacing: "0.12em" }}>
-                {timeAgo(a.published)}
-              </span>
-            </div>
-            <p
-              className="font-display uppercase text-bone group-hover:text-silver transition-colors leading-snug"
-              style={{ fontSize: 17, lineHeight: 1.15 }}
-            >
-              {a.headline}
-            </p>
-            {a.description && (
-              <p className="font-serif text-silver mt-1.5 line-clamp-2" style={{ fontSize: 14, lineHeight: 1.45 }}>
-                {a.description}
-              </p>
-            )}
-          </a>
-        );
-      })}
-
-      {hasMore && (
-        <button
-          onClick={() => setVisible((v) => v + PAGE_SIZE)}
-          className="font-mono uppercase text-muted hover:text-bone transition-colors w-full text-center"
-          style={{ padding: "14px 0", fontSize: 9, letterSpacing: "0.18em" }}
-        >
-          Load More
-        </button>
-      )}
-    </div>
-  );
-}
-
 // ── Week navigator ─────────────────────────────────────────────────────────────
-
-function WeekNav({ week, dateRange, onChange }: {
-  week: number; dateRange: string; onChange: (w: number) => void;
-}) {
-  return (
-    <div className="flex items-center gap-4">
-      <Button iconOnly aria-label="Previous week" onClick={() => onChange(Math.max(1, week - 1))} disabled={week <= 1}>‹</Button>
-      <div className="text-center" style={{ minWidth: 96 }}>
-        <div className="font-display uppercase text-bone" style={{ fontSize: 26, lineHeight: 1 }}>Wk {week}</div>
-        {dateRange && (
-          <div className="font-mono uppercase text-muted mt-1" style={{ fontSize: 8.5, letterSpacing: "0.14em" }}>{dateRange}</div>
-        )}
-      </div>
-      <Button iconOnly aria-label="Next week" onClick={() => onChange(Math.min(NFL_TOTAL_WEEKS, week + 1))} disabled={week >= NFL_TOTAL_WEEKS}>›</Button>
-    </div>
-  );
-}
 
 // ── Standings ─────────────────────────────────────────────────────────────────
 
@@ -391,11 +255,9 @@ export default function NFLDashboard() {
   const [loadingNews,  setLoadingNews]  = useState(true);
   const [errorGames,   setErrorGames]   = useState(false);
   const [errorStd,     setErrorStd]     = useState(false);
-  const [initialized,  setInitialized]  = useState(false);
 
   // Initial load: get current week from API
   useEffect(() => {
-    setLoadingGames(true);
     fetchNFLScoreboard()
       .then(({ week: w, season: s, games: g, leagueLogo: logo }) => {
         setWeek(w);
@@ -403,9 +265,8 @@ export default function NFLDashboard() {
         setGames(g);
         setDateRange(weekDateRange(g));
         if (logo) setLeagueLogo(logo);
-        setInitialized(true);
       })
-      .catch(() => { setErrorGames(true); setInitialized(true); })
+      .catch(() => setErrorGames(true))
       .finally(() => setLoadingGames(false));
 
     fetchNFLStandings()
@@ -418,12 +279,11 @@ export default function NFLDashboard() {
       .finally(() => setLoadingNews(false));
   }, []);
 
-  // Week change after initialization
-  useEffect(() => {
-    if (!initialized) return;
+  const changeWeek = (nextWeek: number) => {
     setLoadingGames(true);
     setErrorGames(false);
-    fetchNFLScoreboard(week)
+    setWeek(nextWeek);
+    fetchNFLScoreboard(nextWeek)
       .then(({ season: s, games: g }) => {
         setSeason(s);
         setGames(g);
@@ -431,7 +291,7 @@ export default function NFLDashboard() {
       })
       .catch(() => setErrorGames(true))
       .finally(() => setLoadingGames(false));
-  }, [week, initialized]);
+  };
 
   const liveCount  = games.filter((g) => g.competitions[0].status.type.state === "in").length;
   const activeConf = conferences.find((c) => c.shortName === confTab);
@@ -450,14 +310,23 @@ export default function NFLDashboard() {
                 {liveCount} live
               </div>
             )}
-            <WeekNav week={week} dateRange={dateRange} onChange={setWeek} />
+            <PeriodNavigator
+              label={`Wk ${week}`}
+              detail={dateRange}
+              previousLabel="Previous week"
+              nextLabel="Next week"
+              onPrevious={() => changeWeek(Math.max(1, week - 1))}
+              onNext={() => changeWeek(Math.min(NFL_TOTAL_WEEKS, week + 1))}
+              previousDisabled={week <= 1}
+              nextDisabled={week >= NFL_TOTAL_WEEKS}
+            />
           </>
         }
       />
 
-      <div className="grid lg:grid-cols-[minmax(0,1fr)_452px]">
+      <SportDashboardLayout>
         {/* Left: Scoreboard */}
-        <div className="py-[26px] lg:pr-[34px]">
+        <SportDashboardMain>
           <SectionLabel className="mb-5">Week {week} · {games.length} Games</SectionLabel>
 
           {loadingGames ? (
@@ -478,7 +347,7 @@ export default function NFLDashboard() {
           {!loadingNews && news.length > 0 && (
             <div className="mt-10">
               <SectionLabel className="mb-4">News</SectionLabel>
-              <NewsList articles={news} />
+              <NewsFeed articles={news} sources={NFL_SOURCE_META} />
             </div>
           )}
           {loadingNews && (
@@ -487,10 +356,10 @@ export default function NFLDashboard() {
               {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} height={68} />)}
             </div>
           )}
-        </div>
+        </SportDashboardMain>
 
         {/* Right: Standings */}
-        <aside className="border-t border-hairline py-[26px] lg:border-l lg:border-t-0 lg:pl-[26px]">
+        <SportDashboardRail>
           <div className="mb-4 flex items-center gap-3 flex-wrap">
             <SectionLabel>Standings</SectionLabel>
             <div className="ml-auto flex items-center gap-2">
@@ -509,7 +378,8 @@ export default function NFLDashboard() {
           {/* Conference tabs */}
           <div className="flex gap-[1px] mb-5" style={{ borderBottom: "1px solid var(--color-hairline)" }}>
             {(["AFC", "NFC"] as const).map((c) => (
-              <button
+              <Button
+                variant="bare"
                 key={c}
                 onClick={() => setConfTab(c)}
                 className="font-display uppercase pb-[9px] px-3 transition-colors"
@@ -527,7 +397,7 @@ export default function NFLDashboard() {
                 }}
               >
                 {c}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -542,8 +412,8 @@ export default function NFLDashboard() {
               ? <DivisionStandings conference={activeConf} />
               : <ConferenceStandings conference={activeConf} />
           ) : null}
-        </aside>
-      </div>
+        </SportDashboardRail>
+      </SportDashboardLayout>
     </PageContainer>
   );
 }

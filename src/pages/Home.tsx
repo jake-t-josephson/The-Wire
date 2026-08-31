@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useState, useEffect, type CSSProperties } from "react";
+import { Link } from "react-router-dom";
 import {
   fetchFixtures, fetchStandings, fetchNews,
   groupMatchweeks, currentMatchweekIndex,
@@ -14,7 +14,6 @@ import { Skeleton } from "../components/ui/Skeleton";
 // ── Live rail ─────────────────────────────────────────────────────────────────
 
 function LiveCard({ fixture }: { fixture: ESPNFixture }) {
-  const navigate = useNavigate();
   const comp   = fixture.competitions[0];
   const status = comp.status.type;
   const home   = comp.competitors.find((c) => c.homeAway === "home")!;
@@ -30,7 +29,7 @@ function LiveCard({ fixture }: { fixture: ESPNFixture }) {
     `live-card__score${isDone && !winner ? " live-card__score--dim" : ""}`;
 
   return (
-    <div className="live-card" onClick={() => navigate(`/epl/match/${fixture.id}`)}>
+    <Link className="live-card" to={`/epl/match/${fixture.id}`} aria-label={`${home.team.displayName} vs ${away.team.displayName}`}>
       {isLive && <div className="live-card__bar" />}
 
       <div className="live-card__header" style={{ marginLeft: isLive ? 8 : 0 }}>
@@ -48,7 +47,7 @@ function LiveCard({ fixture }: { fixture: ESPNFixture }) {
           </div>
         ))}
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -66,7 +65,7 @@ function LiveRail({ fixtures }: { fixtures: ESPNFixture[] }) {
           <span className="live-rail__meta">{dateLabel} · {timeLabel}</span>
           <span className="live-rail__count">{fixtures.length} game{fixtures.length !== 1 ? "s" : ""}</span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 14 }}>
+        <div className="live-rail__games" style={{ "--live-columns": cols } as CSSProperties}>
           {fixtures.slice(0, 4).map((f) => <LiveCard key={f.id} fixture={f} />)}
         </div>
       </div>
@@ -189,8 +188,6 @@ function ColumnSection() {
 // ── Today's slate ─────────────────────────────────────────────────────────────
 
 function TodaySlate({ fixtures }: { fixtures: ESPNFixture[] }) {
-  const navigate = useNavigate();
-
   return (
     <div>
       <div className="slate-header">Today's slate</div>
@@ -207,13 +204,13 @@ function TodaySlate({ fixtures }: { fixtures: ESPNFixture[] }) {
             : new Date(f.date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
           return (
-            <div key={f.id} className="slate-row" onClick={() => navigate(`/epl/match/${f.id}`)}>
+            <Link key={f.id} className="slate-row" to={`/epl/match/${f.id}`}>
               <span className="slate-row__time">{time}</span>
               <span className="slate-row__teams">
                 {home.team.shortDisplayName} · {away.team.shortDisplayName}
               </span>
               <span className="slate-row__league">PL</span>
-            </div>
+            </Link>
           );
         })}
       </div>
@@ -234,8 +231,6 @@ function WireSeparator() {
 // ── Mini standings ────────────────────────────────────────────────────────────
 
 function MiniStandings({ entries, gwLabel }: { entries: ESPNStandingEntry[]; gwLabel: string }) {
-  const navigate = useNavigate();
-
   return (
     <div>
       <div className="standings-mini__label">Premier League · {gwLabel}</div>
@@ -250,10 +245,10 @@ function MiniStandings({ entries, gwLabel }: { entries: ESPNStandingEntry[]; gwL
         const pts = entry.stats.find((s) => s.name === "points")?.displayValue ?? "–";
 
         return (
-          <div
+          <Link
             key={entry.team.id}
             className="standings-mini__row"
-            onClick={() => navigate(`/epl/team/${entry.team.id}`)}
+            to={`/epl/team/${entry.team.id}`}
           >
             <span className={`standings-mini__pos${pos === 1 ? " standings-mini__pos--first" : ""}`}>
               {pos}
@@ -261,7 +256,7 @@ function MiniStandings({ entries, gwLabel }: { entries: ESPNStandingEntry[]; gwL
             <span className="standings-mini__club">{entry.team.shortDisplayName}</span>
             <span className="standings-mini__gd">{gd}</span>
             <span className="standings-mini__pts">{pts}</span>
-          </div>
+          </Link>
         );
       })}
 

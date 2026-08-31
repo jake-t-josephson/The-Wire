@@ -1,22 +1,25 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { cn } from "../../lib/cn";
-
-type ButtonVariant = "primary" | "secondary" | "ghost";
-type ButtonSize = "sm" | "md";
+import { buttonClassName, type ButtonSize, type ButtonVariant } from "./buttonStyles";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
   size?: ButtonSize;
   iconOnly?: boolean;
+  loading?: boolean;
   children: ReactNode;
 }
 
-export function Button({ variant = "secondary", size = "md", iconOnly = false, className, type = "button", ...props }: ButtonProps) {
+export function Button({ variant = "secondary", size = "md", iconOnly = false, loading = false, className, type = "button", children, disabled, ...props }: ButtonProps) {
   return (
     <button
       type={type}
-      className={cn("ui-button", `ui-button--${variant}`, `ui-button--${size}`, iconOnly && "ui-icon-button", className)}
+      className={buttonClassName({ variant, size, iconOnly, className })}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...props}
-    />
+    >
+      {loading && <span className="ui-spinner" aria-hidden="true" />}
+      {children}
+    </button>
   );
 }

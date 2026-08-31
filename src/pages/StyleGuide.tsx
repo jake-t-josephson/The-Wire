@@ -3,20 +3,28 @@ import { StatusDot } from "../components/sports/StatusDot";
 import { TeamCrest } from "../components/sports/TeamCrest";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/Button";
+import { IconButton } from "../components/ui/IconButton";
+import { LinkButton } from "../components/ui/LinkButton";
+import { EmptyState, ErrorState } from "../components/ui/EmptyState";
 import { Panel } from "../components/ui/Panel";
 import { SegmentedControl } from "../components/ui/SegmentedControl";
 import { Select } from "../components/ui/Select";
 import { Skeleton } from "../components/ui/Skeleton";
 import { Tabs } from "../components/ui/Tabs";
 import { Eyebrow, SectionLabel } from "../components/ui/Typography";
+import { PeriodNavigator } from "../components/sports/PeriodNavigator";
+import { NewsFeed } from "../components/sports/NewsFeed";
+import { EPL_SOURCE_META } from "../lib/sourceMeta";
 
 export default function StyleGuide() {
+  const [tab, setTab] = useState<"fixtures" | "table">("fixtures");
+
   return (
     <PageContainer className="pb-16">
       <PageHeader eyebrow={<Eyebrow signal className="mb-2.5 block">Internal</Eyebrow>} title="UI Foundations" />
       <div className="mt-10 grid gap-6 md:grid-cols-2">
         <Showcase title="Buttons">
-          <Button variant="primary">Primary</Button><Button>Secondary</Button><Button variant="ghost">Ghost</Button><Button disabled>Disabled</Button>
+          <Button variant="primary">Primary</Button><Button>Secondary</Button><Button variant="ghost">Ghost</Button><Button loading>Loading</Button><Button disabled>Disabled</Button><IconButton aria-label="Previous">‹</IconButton><LinkButton to="/">Link</LinkButton>
         </Showcase>
         <Showcase title="Controls">
           <SegmentedControl label="Example view" value="live" onChange={() => undefined} items={[{ label: "Week 4", value: "week" }, { label: "Live", value: "live" }]} />
@@ -32,8 +40,27 @@ export default function StyleGuide() {
           <TeamCrest name="The Wire FC" abbreviation="TWF" />
           <div className="w-40 space-y-2"><Skeleton height={14} /><Skeleton width="70%" height={10} /></div>
         </Showcase>
+        <Showcase title="Sports navigation">
+          <PeriodNavigator label="GW 4" detail="Sep 12 – Sep 14" previousLabel="Previous matchweek" nextLabel="Next matchweek" onPrevious={() => undefined} onNext={() => undefined} />
+        </Showcase>
       </div>
-      <div className="mt-6"><Tabs label="Example sections" value="fixtures" items={[{ label: "Fixtures", value: "fixtures" }, { label: "Table", value: "table" }, { label: "Wireroom", value: "wireroom", disabled: true }]} /></div>
+      <div className="mt-6">
+        <Tabs label="Example sections" panelId="ui-example-panel" value={tab} onChange={setTab} items={[{ label: "Fixtures", value: "fixtures" }, { label: "Table", value: "table" }]} />
+        <Panel id="ui-example-panel" role="tabpanel" aria-label={tab} className="rounded-t-none p-5">
+          {tab === "fixtures" ? <EmptyState>No fixtures in this example.</EmptyState> : <ErrorState>Table data is unavailable.</ErrorState>}
+        </Panel>
+      </div>
+      <Panel className="mt-6 p-5">
+        <SectionLabel className="mb-5">News feed</SectionLabel>
+        <NewsFeed
+          sources={EPL_SOURCE_META}
+          pageSize={2}
+          articles={[
+            { source: "ESPN", headline: "A shared sports headline", description: "Article rows and source filters now render through one component.", published: new Date().toISOString(), url: "#" },
+            { source: "The Guardian", headline: "A second source on the wire", published: new Date().toISOString(), url: "#" },
+          ]}
+        />
+      </Panel>
     </PageContainer>
   );
 }
@@ -41,4 +68,4 @@ export default function StyleGuide() {
 function Showcase({ title, children }: { title: string; children: ReactNode }) {
   return <Panel className="p-5"><SectionLabel className="mb-5">{title}</SectionLabel><div className="flex flex-wrap items-center gap-3">{children}</div></Panel>;
 }
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
