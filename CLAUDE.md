@@ -67,8 +67,7 @@ This file is the operational checklist for AI coding agents and contributors. It
 Run:
 
 ```bash
-npm run build
-npm run lint
+npm run check
 ```
 
 When the UI changes, also verify:

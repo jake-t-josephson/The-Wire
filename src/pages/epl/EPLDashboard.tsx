@@ -1,18 +1,13 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import {
   fetchFixtures, fetchStandings, fetchEPLNews,
   groupMatchweeks, currentMatchweekIndex, groupByDate,
   computeMatchweekStats, computePositionChanges,
   type Matchweek, type ESPNFixture, type ESPNStandingEntry, type EPLArticle,
-  type MatchweekStats,
 } from "../../lib/espn";
 import { fetchHistoricalFixtures, fetchHistoricalStandings } from "../../lib/supabase";
-import { resolveChannel, faviconUrl } from "../../lib/channels";
 import { PageContainer, PageHeader } from "../../components/layout/Page";
 import { StatusDot } from "../../components/sports/StatusDot";
-import { TeamCrest } from "../../components/sports/TeamCrest";
-import { Badge } from "../../components/ui/Badge";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { Tabs } from "../../components/ui/Tabs";
@@ -21,21 +16,10 @@ import { EPL_SOURCE_META } from "../../lib/sourceMeta";
 import { PeriodNavigator } from "../../components/sports/PeriodNavigator";
 import { NewsFeed } from "../../components/sports/NewsFeed";
 import { SportDashboardLayout, SportDashboardMain, SportDashboardRail } from "../../components/layout/SportDashboardLayout";
-
-// ── Fixture row ───────────────────────────────────────────────────────────────
-
-function ChannelBadge({ name }: { name: string }) {
-  const info = resolveChannel(name);
-  if (!info) return (
-    <Badge>{name}</Badge>
-  );
-  return (
-    <a href={info.url} target="_blank" rel="noopener noreferrer" title={info.label}
-      onClick={(e) => e.stopPropagation()} className="inline-flex items-center hover:opacity-70 transition-opacity">
-      <img src={faviconUrl(info.domain)} alt={info.label} style={{ width: 12, height: 12 }} className="rounded-sm" />
-    </a>
-  );
-}
+import { GameRow } from "../../components/sports/GameRow";
+import { toEPLGameRow } from "../../lib/adapters/epl";
+import { StandingsLegend, StandingsTable } from "../../components/sports/StandingsTable";
+import { EPL_STANDING_COLUMNS, toEPLStandings } from "../../lib/adapters/standings";
 
 function matchweekDateRange(matchweek: Matchweek) {
   const format = (date: string) => new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -43,213 +27,6 @@ function matchweekDateRange(matchweek: Matchweek) {
   const end = matchweek.dates.length > 1 ? format(matchweek.dates[matchweek.dates.length - 1]) : null;
   return end ? `${start} – ${end}` : start;
 }
-
-function FixtureRow({ fixture }: { fixture: ESPNFixture }) {
-  const comp    = fixture.competitions[0];
-  const status  = comp.status.type;
-  const home    = comp.competitors.find((c) => c.homeAway === "home")!;
-  const away    = comp.competitors.find((c) => c.homeAway === "away")!;
-  const isLive  = status.state === "in";
-  const isDone  = status.state === "post";
-  const isPre   = status.state === "pre";
-  const channels = comp.broadcasts?.[0]?.names ?? [];
-  const isWire  = isLive && comp.status.displayClock && parseInt(comp.status.displayClock) >= 88;
-  const venue    = comp.venue?.fullName ?? null;
-
-  const homeWin = isDone && home.winner;
-  const awayWin = isDone && away.winner;
-
-  const kickoff = new Date(fixture.date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-
-  return (
-    <div
-      className="relative grid transition-colors"
-      style={{
-        gridTemplateColumns: "1fr 96px 1fr",
-        gap: 14,
-        padding: "13px 12px",
-        borderBottom: "1px solid var(--color-hairline)",
-        background: isLive ? "var(--color-slate)" : "transparent",
-        borderLeft: isLive ? "3px solid var(--color-signal)" : "3px solid transparent",
-        marginLeft: isLive ? 0 : 0,
-      }}
-    >
-      <Link className="absolute inset-0" to={`/epl/match/${fixture.id}`} aria-label={`${home.team.displayName} vs ${away.team.displayName}`} />
-      {/* Home */}
-      <div className="flex items-center justify-end gap-[11px] min-w-0">
-        <span
-          className="font-display uppercase truncate"
-          style={{ fontSize: 26, lineHeight: 1, color: !isDone || homeWin ? "var(--color-bone)" : "var(--color-silver)" }}
-        >
-          {home.team.shortDisplayName}
-        </span>
-        <TeamCrest src={home.team.logo} name={home.team.displayName} abbreviation={home.team.abbreviation} />
-      </div>
-
-      {/* Centre */}
-      <div className="flex flex-col items-center justify-center gap-1">
-        {isPre ? (
-          <>
-            <span className="font-display text-bone" style={{ fontSize: 22, lineHeight: 1 }}>{kickoff}</span>
-            {channels.length > 0 && (
-              <div className="relative z-10 flex items-center gap-1.5 mt-0.5">
-                {channels.map((ch) => <ChannelBadge key={ch} name={ch} />)}
-              </div>
-            )}
-          </>
-        ) : (
-          <>
-            <div className="flex items-center gap-[9px]">
-              <span className="font-display" style={{ fontSize: 27, lineHeight: 1, color: !isDone || homeWin ? "var(--color-bone)" : "var(--color-silver)" }}>
-                {home.score}
-              </span>
-              <span className="text-muted" style={{ fontSize: 14 }}>–</span>
-              <span className="font-display" style={{ fontSize: 27, lineHeight: 1, color: !isDone || awayWin ? "var(--color-bone)" : "var(--color-silver)" }}>
-                {away.score}
-              </span>
-            </div>
-            {isLive ? (
-              <div className="flex items-center justify-center gap-[5px]">
-                <StatusDot state={isWire ? "wire" : "live"} />
-                <span className="font-mono text-signal" style={{ fontSize: 8, letterSpacing: "0.14em" }}>
-                  {comp.status.displayClock}
-                </span>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center gap-[5px]">
-                <StatusDot state="final" />
-                <span className="font-mono text-muted" style={{ fontSize: 8, letterSpacing: "0.14em" }}>FT</span>
-              </div>
-            )}
-          </>
-        )}
-        {venue && (
-          <span className="font-mono text-muted text-center" style={{ fontSize: 7.5, letterSpacing: "0.08em" }}>{venue}</span>
-        )}
-      </div>
-
-      {/* Away */}
-      <div className="flex items-center gap-[11px] min-w-0">
-        <TeamCrest src={away.team.logo} name={away.team.displayName} abbreviation={away.team.abbreviation} />
-        <span
-          className="font-display uppercase truncate"
-          style={{ fontSize: 26, lineHeight: 1, color: !isDone || awayWin ? "var(--color-bone)" : "var(--color-silver)" }}
-        >
-          {away.team.shortDisplayName}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// ── Matchweek navigator ───────────────────────────────────────────────────────
-
-// ── Standings ─────────────────────────────────────────────────────────────────
-
-function getStat(entry: ESPNStandingEntry, name: string) {
-  return entry.stats.find((s) => s.name === name);
-}
-
-const ZONE_MAP: Record<string, string> = {
-  "4ead6a": "var(--color-signal)",
-  "81d6ac": "color-mix(in srgb, var(--color-signal) 50%, transparent)",
-  "f04f23": "var(--color-down)",
-  "f0a823": "var(--color-amber)",
-};
-
-function zoneColor(hex: string): string | null {
-  return ZONE_MAP[hex.toLowerCase().replace("#", "")] ?? null;
-}
-
-function StandingsTable({ entries, mwStats, posChanges }: {
-  entries: ESPNStandingEntry[];
-  mwStats: Map<string, MatchweekStats>;
-  posChanges: Map<string, number>;
-}) {
-  // grid: 34px 1fr 26px 26px 26px 26px 34px 34px
-  const grid = "34px 1fr 26px 26px 26px 26px 34px 34px";
-
-  return (
-    <div>
-      {/* Header row */}
-      <div className="grid font-mono uppercase text-muted pb-[10px]" style={{ gridTemplateColumns: grid, gap: 6, fontSize: 8, letterSpacing: "0.14em", borderBottom: "1px solid var(--color-hairline)" }}>
-        <span>#</span><span>Club</span>
-        <span className="text-right">MP</span><span className="text-right">W</span>
-        <span className="text-right">D</span><span className="text-right">L</span>
-        <span className="text-right">GD</span><span className="text-right">Pts</span>
-      </div>
-
-      {entries.map((entry, i) => {
-        const pos     = parseInt(getStat(entry, "rank")?.displayValue ?? "") || i + 1;
-        const noteHex = entry.note?.color ?? "";
-        const zColor  = zoneColor(noteHex);
-        const logo    = entry.team.logos?.[0]?.href;
-        const abbr    = entry.team.abbreviation || entry.team.shortDisplayName.slice(0, 3);
-        const change  = posChanges.get(entry.team.id) ?? 0;
-        const mw      = mwStats.get(entry.team.id);
-
-        const mp  = getStat(entry, "gamesPlayed")?.displayValue  ?? "–";
-        const w   = getStat(entry, "wins")?.displayValue          ?? "–";
-        const d   = getStat(entry, "ties")?.displayValue          ?? "–";
-        const l   = getStat(entry, "losses")?.displayValue        ?? "–";
-        const gd  = getStat(entry, "pointDifferential")?.displayValue ?? "–";
-        const pts = getStat(entry, "points")?.displayValue        ?? "–";
-
-        return (
-          <Link
-            key={entry.team.id}
-            to={`/epl/team/${entry.team.id}`}
-            className="grid items-center cursor-pointer transition-colors hover:bg-slate"
-            style={{
-              gridTemplateColumns: grid,
-              gap: 6,
-              padding: "8px 0",
-              borderBottom: "1px solid var(--color-hairline)",
-              borderLeft: zColor ? `2px solid ${zColor}` : "2px solid transparent",
-              paddingLeft: zColor ? 6 : 0,
-              marginLeft: zColor ? -8 : 0,
-            }}
-          >
-            {/* # + change */}
-            <div className="flex items-baseline gap-[3px]">
-              <span className="font-display text-bone" style={{ fontSize: 17, lineHeight: 1 }}>{pos}</span>
-              {change > 0 && <span className="font-mono text-up" style={{ fontSize: 7, lineHeight: 1 }}>▲{change}</span>}
-              {change < 0 && <span className="font-mono text-down" style={{ fontSize: 7, lineHeight: 1 }}>▼{Math.abs(change)}</span>}
-            </div>
-
-            {/* Club */}
-            <div className="flex items-center gap-2 min-w-0">
-              <TeamCrest src={logo} name={entry.team.displayName} abbreviation={abbr} size={17} />
-              <span className="font-display uppercase text-bone truncate" style={{ fontSize: 18, lineHeight: 1 }}>
-                {entry.team.shortDisplayName}
-              </span>
-            </div>
-
-            {/* Stats */}
-            {[mp, w, d, l].map((v, idx) => (
-              <span key={idx} className="font-mono text-silver text-right tabular-nums" style={{ fontSize: 10 }}>{v}</span>
-            ))}
-            <span className="font-mono text-bone text-right tabular-nums" style={{ fontSize: 10 }}>
-              {gd}
-              {mw && mw.gd !== 0 && (
-                <span className={mw.gd > 0 ? "ml-0.5 text-up" : "ml-0.5 text-down"} style={{ fontSize: 8 }}>
-                  {mw.gd > 0 ? `+${mw.gd}` : mw.gd}
-                </span>
-              )}
-            </span>
-            <div className="flex items-baseline justify-end gap-1">
-              <span className="font-display text-bone text-right" style={{ fontSize: 17, lineHeight: 1 }}>{pts}</span>
-              {mw && mw.pts === 3 && <span className="font-mono text-up" style={{ fontSize: 8 }}>+3</span>}
-              {mw && mw.pts === 1 && <span className="font-mono text-amber" style={{ fontSize: 8 }}>+1</span>}
-            </div>
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
-// ── News ──────────────────────────────────────────────────────────────────────
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -328,7 +105,7 @@ export default function EPLDashboard() {
   const standings  = standingsMode === "live" ? liveStandings : snapshotStandings;
   const liveCount  = fixtures.filter((f) => f.competitions[0].status.type.state === "in").length;
   const days       = groupByDate(fixtures);
-  const mwStats    = standingsMode === "live" ? computeMatchweekStats(fixtures) : new Map<string, MatchweekStats>();
+  const mwStats    = standingsMode === "live" ? computeMatchweekStats(fixtures) : new Map();
   const posChanges = standingsMode === "live" ? computePositionChanges(standings, mwStats) : new Map<string, number>();
   const currentMw  = mwIndex !== null ? matchweeks[mwIndex] : null;
 
@@ -344,7 +121,7 @@ export default function EPLDashboard() {
   return (
     <PageContainer>
       <PageHeader
-        leading={leagueLogo && <img src={leagueLogo} alt="Premier League" style={{ width: 52, height: 52, objectFit: "contain" }} />}
+        leading={leagueLogo && <img className="league-mark" src={leagueLogo} alt="Premier League" />}
         eyebrow={<Eyebrow signal className="mb-2.5">Premier League</Eyebrow>}
         title="2026–27 Season"
         actions={
@@ -408,7 +185,7 @@ export default function EPLDashboard() {
                   <div className="eyebrow eyebrow--signal mb-3 mt-[22px]">
                     {label}
                   </div>
-                  {dayFixtures.map((f) => <FixtureRow key={f.id} fixture={f} />)}
+                  {dayFixtures.map((fixture) => <GameRow key={fixture.id} game={toEPLGameRow(fixture)} />)}
                 </div>
               ))}
             </div>
@@ -447,25 +224,18 @@ export default function EPLDashboard() {
           ) : errorStd && standingsMode === "live" ? (
             <p className="empty-state">Couldn't load standings.</p>
           ) : (
-            <StandingsTable entries={standings} mwStats={mwStats} posChanges={posChanges} />
+            <div className="standings-table-scroll">
+              <StandingsTable columns={EPL_STANDING_COLUMNS} groups={toEPLStandings(standings, mwStats, posChanges)} ranked teamLabel="Club" />
+            </div>
           )}
 
           {standings.length > 0 && (
-            <div style={{ marginTop: 14 }}>
-              <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-                {[
-                  { color: "var(--color-signal)", label: "Champions League" },
-                  { color: "color-mix(in srgb, var(--color-signal) 50%, transparent)", label: "Europa League" },
-                  { color: "var(--color-amber)", label: "Conference League" },
-                  { color: "var(--color-down)", label: "Relegation" },
-                ].map(({ color, label }) => (
-                  <div key={label} className="flex items-center gap-1.5 font-mono uppercase text-muted" style={{ fontSize: 8, letterSpacing: "0.12em" }}>
-                    <div className="rounded-full" style={{ width: 2, height: 11, background: color }} />
-                    {label}
-                  </div>
-                ))}
-              </div>
-            </div>
+            <StandingsLegend items={[
+              { tone: "primary", label: "Champions League" },
+              { tone: "secondary", label: "Europa League" },
+              { tone: "warning", label: "Conference League" },
+              { tone: "danger", label: "Relegation" },
+            ]} />
           )}
         </SportDashboardRail>
       </SportDashboardLayout>

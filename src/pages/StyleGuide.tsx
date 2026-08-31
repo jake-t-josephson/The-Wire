@@ -1,3 +1,4 @@
+import { useState, type ReactNode } from "react";
 import { PageContainer, PageHeader } from "../components/layout/Page";
 import { StatusDot } from "../components/sports/StatusDot";
 import { TeamCrest } from "../components/sports/TeamCrest";
@@ -14,7 +15,26 @@ import { Tabs } from "../components/ui/Tabs";
 import { Eyebrow, SectionLabel } from "../components/ui/Typography";
 import { PeriodNavigator } from "../components/sports/PeriodNavigator";
 import { NewsFeed } from "../components/sports/NewsFeed";
+import { GameRow } from "../components/sports/GameRow";
+import { StandingsTable } from "../components/sports/StandingsTable";
 import { EPL_SOURCE_META } from "../lib/sourceMeta";
+import type { GameRowModel, StandingColumnModel, StandingGroupModel } from "../models/sports";
+
+const EXAMPLE_GAME: GameRowModel = {
+  id: "example-game",
+  accessibleLabel: "The Wire FC vs Athletic Press",
+  left: { team: { id: "wire", name: "The Wire FC", shortName: "The Wire", abbreviation: "WIR" }, score: "2", winner: true },
+  right: { team: { id: "press", name: "Athletic Press", shortName: "Athletic", abbreviation: "ATH" }, score: "1" },
+  state: "live",
+  statusLabel: "88'",
+  wire: true,
+};
+
+const EXAMPLE_COLUMNS: StandingColumnModel[] = [{ key: "points", label: "Pts", width: "2rem", align: "right", emphasis: true }];
+const EXAMPLE_STANDINGS: StandingGroupModel[] = [{
+  id: "example-table",
+  rows: [{ id: "wire", rank: 1, team: EXAMPLE_GAME.left.team, cells: { points: { value: "24", detail: "+3", detailTone: "positive" } }, zone: "primary" }],
+}];
 
 export default function StyleGuide() {
   const [tab, setTab] = useState<"fixtures" | "table">("fixtures");
@@ -61,6 +81,16 @@ export default function StyleGuide() {
           ]}
         />
       </Panel>
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <Panel className="min-w-0 p-5">
+          <SectionLabel className="mb-5">Shared game row</SectionLabel>
+          <GameRow game={EXAMPLE_GAME} />
+        </Panel>
+        <Panel className="min-w-0 p-5">
+          <SectionLabel className="mb-5">Shared standings</SectionLabel>
+          <div className="standings-table-scroll"><StandingsTable columns={EXAMPLE_COLUMNS} groups={EXAMPLE_STANDINGS} ranked /></div>
+        </Panel>
+      </div>
     </PageContainer>
   );
 }
@@ -68,4 +98,3 @@ export default function StyleGuide() {
 function Showcase({ title, children }: { title: string; children: ReactNode }) {
   return <Panel className="p-5"><SectionLabel className="mb-5">{title}</SectionLabel><div className="flex flex-wrap items-center gap-3">{children}</div></Panel>;
 }
-import { useState, type ReactNode } from "react";

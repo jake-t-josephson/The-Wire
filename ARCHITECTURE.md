@@ -323,11 +323,18 @@ For every feature or UI change:
 
 ## Current migration priorities
 
-1. Split the global stylesheet into token, foundation, component, and feature layers.
-2. Harden UI primitives and eliminate raw controls in pages.
-3. Replace clickable non-interactive elements with links or buttons.
-4. Normalize EPL and NFL data and extract shared sports components.
-5. Decompose large dashboard and Home page files.
-6. Migrate Podcasts and Player controls onto shared foundations.
-7. Expand `/ui` and add automated interaction/accessibility tests.
-8. Lazy-load routes and resolve current build/lint warnings.
+Completed foundations:
+
+- Global styles are split into token, foundation, primitive, navigation, domain, and feature layers.
+- Buttons, links, tabs, empty states, player controls, and navigation use shared primitives.
+- EPL and NFL games and standings render normalized models through shared domain components.
+- Home is decomposed into feature components; route pages stay below the 250-line ceiling.
+- `/ui` covers the reusable sports vocabulary and Vitest covers core interaction and accessibility contracts.
+- Routes are lazy-loaded and `npm run check` enforces architecture, lint, tests, and production build.
+
+Next priorities:
+
+1. Move page data-loading state into league feature hooks as it grows.
+2. Add normalized models for the compact Home live rail and slate when a second league joins those surfaces.
+3. Expand page-level tests for loading, empty, error, and route transitions.
+4. Continue lowering the remaining transitional inline-style ceilings in Match Detail and Podcasts.
