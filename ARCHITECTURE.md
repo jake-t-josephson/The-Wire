@@ -260,6 +260,15 @@ Source-brand colors are external identity data, not product tokens. Keep them in
 
 Avoid placing unrelated application state in a global context.
 
+## Security and persistence
+
+- Every table exposed through the Supabase public schema must have row-level security enabled in a migration.
+- Public sports and editorial data is read-only to `anon` and `authenticated`; synchronization writes use the service role, which never ships to the browser.
+- Podcast progress belongs to `auth.uid()`. The app establishes a persisted Supabase anonymous session when progress is first read or written, so account UI is not required.
+- Edge Functions that create or update data must authorize the caller inside the handler. A valid public anon JWT is not permission to mutate application data.
+- Scheduled refresh functions accept only POST requests authenticated with the service-role bearer token.
+- Public Wireroom requests read the latest stored brief. Source fetching, model invocation, and cache writes happen only in the trusted refresh workflow.
+
 ## Accessibility architecture
 
 Accessibility is enforced at the lowest reusable layer:

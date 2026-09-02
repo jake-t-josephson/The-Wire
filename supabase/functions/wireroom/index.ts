@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isServiceRoleRequest, jsonError } from "../_shared/auth.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -172,14 +173,22 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: CORS });
   }
+  if (req.method !== "POST") return jsonError("Method not allowed", 405, CORS);
+
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const authorized = isServiceRoleRequest(req, serviceRoleKey);
+  const body = await req.json().catch(() => ({}));
+  const refreshRequested = body?.refresh === true || body?.force === true;
+  const forced = body?.force === true;
+
+  if (refreshRequested && !authorized) {
+    return jsonError("Unauthorized", 401, CORS);
+  }
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    serviceRoleKey!,
   );
-
-  const body   = req.method === "POST" ? await req.json().catch(() => ({})) : {};
-  const forced = body?.force === true;
 
   // Check if we have a fresh brief already
   const { data: latest } = await supabase
@@ -190,7 +199,7 @@ Deno.serve(async (req) => {
     .limit(1)
     .maybeSingle();
 
-  if (!forced && latest && Date.now() - new Date(latest.generated_at).getTime() < CACHE_TTL_MS) {
+  const latestResponse = () => {
     const stored = latest.lead_brief as Brief;
     return Response.json(
       {
@@ -202,6 +211,17 @@ Deno.serve(async (req) => {
       },
       { headers: { ...CORS, "Content-Type": "application/json" } },
     );
+  };
+
+  // Ordinary app requests are read-only and may receive a stale brief. Only a
+  // trusted scheduler can refresh sources, invoke the model, or write rows.
+  if (!refreshRequested) {
+    if (latest) return latestResponse();
+    return jsonError("No brief available", 503, CORS);
+  }
+
+  if (!forced && latest && Date.now() - new Date(latest.generated_at).getTime() < CACHE_TTL_MS) {
+    return latestResponse();
   }
 
   // Fetch all sources in parallel

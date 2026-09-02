@@ -31,6 +31,14 @@ This file is the operational checklist for AI coding agents and contributors. It
 - Every reusable component must define responsive behavior rather than relying on page-level repairs.
 - Loading, empty, error, disabled, and success states must use shared patterns.
 
+## Data security rules
+
+- Never create a public-schema table without enabling RLS in the same migration.
+- Browser code may use only the Supabase anon key. The service-role key belongs in server environments and trusted CI jobs only.
+- Read-only public data needs explicit select policies and no public write policy.
+- User-owned rows must include an ownership key and enforce `auth.uid()` in select, insert, update, and delete policies.
+- Edge Functions that use the service role must authorize mutation requests inside the handler and restrict their HTTP methods.
+
 ## Component rules
 
 - Prefer a small explicit API over arbitrary styling props.

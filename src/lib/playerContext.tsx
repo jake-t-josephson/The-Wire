@@ -22,7 +22,9 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const flushProgress = useCallback((audio: HTMLAudioElement, guid: string) => {
     const completed = audio.duration > 0 && audio.currentTime >= audio.duration - 5;
-    upsertProgress(guid, audio.currentTime, completed);
+    void upsertProgress(guid, audio.currentTime, completed).catch(() => {
+      // Playback remains local when cloud progress cannot be persisted.
+    });
   }, []);
 
   const startFlushInterval = useCallback((audio: HTMLAudioElement, guid: string) => {
@@ -68,7 +70,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     audio.onended = () => {
       setState((s) => ({ ...s, playing: false, position: 0 }));
       stopFlushInterval();
-      if (guidRef.current) upsertProgress(guidRef.current, 0, true);
+      if (guidRef.current) {
+        void upsertProgress(guidRef.current, 0, true).catch(() => {
+          // Playback remains local when cloud progress cannot be persisted.
+        });
+      }
     };
 
     setState((s) => ({ ...s, episode, feed, playing: false, position: resumeAt, duration: 0 }));

@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { getViewerId } from "./viewerSession";
 
 export interface PodcastFeed {
   id:              string;
@@ -49,9 +50,11 @@ export async function fetchEpisodes(feedId: string, limit = 20): Promise<Podcast
 
 export async function fetchProgress(guids: string[]): Promise<Map<string, PodcastProgress>> {
   if (guids.length === 0) return new Map();
+  const userId = await getViewerId();
   const { data, error } = await supabase
     .from("podcast_progress")
     .select("episode_guid, position_seconds, completed, last_played_at")
+    .eq("user_id", userId)
     .in("episode_guid", guids);
   if (error) throw new Error(error.message);
   return new Map((data ?? []).map((r) => [r.episode_guid as string, r as PodcastProgress]));
@@ -62,10 +65,12 @@ export async function upsertProgress(
   positionSeconds: number,
   completed: boolean,
 ): Promise<void> {
-  await supabase.from("podcast_progress").upsert(
-    { episode_guid: episodeGuid, position_seconds: Math.floor(positionSeconds), completed, last_played_at: new Date().toISOString() },
-    { onConflict: "episode_guid" },
+  const userId = await getViewerId();
+  const { error } = await supabase.from("podcast_progress").upsert(
+    { user_id: userId, episode_guid: episodeGuid, position_seconds: Math.floor(positionSeconds), completed, last_played_at: new Date().toISOString() },
+    { onConflict: "user_id,episode_guid" },
   );
+  if (error) throw new Error(error.message);
 }
 
 export function formatDuration(seconds: number | null): string {

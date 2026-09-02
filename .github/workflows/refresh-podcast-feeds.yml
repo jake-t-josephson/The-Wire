@@ -12,6 +12,6 @@ jobs:
       - name: Call Supabase Edge Function
         run: |
           curl -sf -X POST \
-            "https://lyvinhkewafhhfjacsft.supabase.co/functions/v1/fetch-podcast-feeds" \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/fetch-podcast-feeds" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -H "Content-Type: application/json"

@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isServiceRoleRequest, jsonError } from "../_shared/auth.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -92,11 +93,16 @@ function parseFeed(xml: string): { meta: FeedMeta; episodes: Episode[] } {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+  if (req.method !== "POST") return jsonError("Method not allowed", 405, CORS);
 
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!isServiceRoleRequest(req, serviceRoleKey)) {
+    return jsonError("Unauthorized", 401, CORS);
+  }
 
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    serviceRoleKey!,
   );
 
   const { data: feeds, error: feedsErr } = await supabase
