@@ -32,20 +32,20 @@ function LiveCard({ game }: { game: CompactGameModel }) {
   );
 }
 
-export function LiveRail({ fixtures }: { fixtures: CompactGameModel[] }) {
+export function LiveRail({ games }: { games: CompactGameModel[] }) {
   const now = new Date();
   const dateLabel = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   const timeLabel = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  const columns = Math.min(fixtures.length, 4);
+  const columns = Math.min(games.length, 4);
   return (
     <div className="live-rail">
       <div className="live-rail__inner">
         <div className="live-rail__header">
           <span className="live-rail__badge">Live now</span>
           <span className="live-rail__meta">{dateLabel} · {timeLabel}</span>
-          <span className="live-rail__count">{fixtures.length} game{fixtures.length !== 1 ? "s" : ""}</span>
+          <span className="live-rail__count">{games.length} game{games.length !== 1 ? "s" : ""}</span>
         </div>
-        <div className="live-rail__games" data-columns={columns}>{fixtures.slice(0, 4).map((game) => <LiveCard key={game.id} game={game} />)}</div>
+        <div className="live-rail__games" data-columns={columns}>{games.slice(0, 4).map((game) => <LiveCard key={game.id} game={game} />)}</div>
       </div>
     </div>
   );

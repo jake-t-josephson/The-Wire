@@ -336,7 +336,7 @@ Next priorities:
 
 1. Add URL-backed league filters when dashboard views become shareable.
 2. Add a second compact-game adapter when another league joins the Home slate.
-3. Expand hook tests around stale requests and rapid period changes.
+3. Expand hook tests around provider failures and historical fallback behavior.
 4. Continue replacing utility-heavy page markup with named feature styles as those screens evolve.
 
 Recently completed:
@@ -345,3 +345,4 @@ Recently completed:
 - Home live rail, slate, and mini standings consume compact normalized models.
 - Page tests cover loading, empty, error, success, route transition, and period navigation behavior.
 - Match Detail and Podcasts no longer require transitional inline-style allowances; native progress elements expose their values accessibly.
+- NFL week requests are sequenced so stale or post-unmount responses cannot overwrite the active view.

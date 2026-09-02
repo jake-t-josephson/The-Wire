@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   fetchNFLNews,
   fetchNFLScoreboard,
@@ -27,20 +27,22 @@ export function useNFLDashboard() {
   const [loadingNews, setLoadingNews] = useState(true);
   const [gamesError, setGamesError] = useState(false);
   const [standingsError, setStandingsError] = useState(false);
+  const scoreboardRequest = useRef(0);
 
   useEffect(() => {
     let active = true;
+    const request = ++scoreboardRequest.current;
     fetchNFLScoreboard()
       .then(({ week: nextWeek, season: nextSeason, games: nextGames, leagueLogo: nextLogo }) => {
-        if (!active) return;
+        if (!active || request !== scoreboardRequest.current) return;
         setWeek(nextWeek);
         setSeason(nextSeason);
         setGames(nextGames);
         setDateRange(weekDateRange(nextGames));
         if (nextLogo) setLeagueLogo(nextLogo);
       })
-      .catch(() => { if (active) setGamesError(true); })
-      .finally(() => { if (active) setLoadingGames(false); });
+      .catch(() => { if (active && request === scoreboardRequest.current) setGamesError(true); })
+      .finally(() => { if (active && request === scoreboardRequest.current) setLoadingGames(false); });
 
     fetchNFLStandings()
       .then((entries) => { if (active) setConferences(entries); })
@@ -51,22 +53,32 @@ export function useNFLDashboard() {
       .then((articles) => { if (active) setNews(articles); })
       .finally(() => { if (active) setLoadingNews(false); });
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+      scoreboardRequest.current += 1;
+    };
   }, []);
 
   const changeWeek = useCallback((nextWeek: number) => {
+    const request = ++scoreboardRequest.current;
     setLoadingGames(true);
     setGamesError(false);
     setWeek(nextWeek);
     fetchNFLScoreboard(nextWeek)
       .then(({ season: nextSeason, games: nextGames }) => {
+        if (request !== scoreboardRequest.current) return;
         setSeason(nextSeason);
         setGames(nextGames);
         setDateRange(weekDateRange(nextGames));
       })
-      .catch(() => setGamesError(true))
-      .finally(() => setLoadingGames(false));
+      .catch(() => { if (request === scoreboardRequest.current) setGamesError(true); })
+      .finally(() => { if (request === scoreboardRequest.current) setLoadingGames(false); });
   }, []);
+
+  const liveCount = useMemo(
+    () => games.filter((game) => game.competitions[0].status.type.state === "in").length,
+    [games],
+  );
 
   return {
     activeConference: conferences.find((conference) => conference.shortName === conferenceTab),
@@ -76,7 +88,7 @@ export function useNFLDashboard() {
     games,
     gamesError,
     leagueLogo,
-    liveCount: games.filter((game) => game.competitions[0].status.type.state === "in").length,
+    liveCount,
     loadingGames,
     loadingNews,
     loadingStandings,

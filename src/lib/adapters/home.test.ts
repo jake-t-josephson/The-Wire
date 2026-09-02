@@ -15,7 +15,7 @@ describe("Home adapters", () => {
         ],
       }],
     } as ESPNFixture;
-    expect(toCompactGame(fixture, "NFL", "/nfl/game")).toMatchObject({
+    expect(toCompactGame(fixture, { leagueLabel: "NFL", routeBase: "/nfl/game" })).toMatchObject({
       href: "/nfl/game/1",
       leagueLabel: "NFL",
       state: "live",
@@ -33,6 +33,6 @@ describe("Home adapters", () => {
         { name: "points", displayValue: "12", value: 12 },
       ],
     } as ESPNStandingEntry;
-    expect(toCompactStanding(entry, 0)).toEqual({ id: "wire", href: "/epl/team/wire", position: 2, teamName: "Wire", goalDifference: "+4", points: "12" });
+    expect(toCompactStanding(entry, 0, "/epl/team")).toEqual({ id: "wire", href: "/epl/team/wire", position: 2, teamName: "Wire", goalDifference: "+4", points: "12" });
   });
 });

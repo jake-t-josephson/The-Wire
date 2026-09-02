@@ -13,7 +13,7 @@ function compactTeam(competitor: ESPNFixture["competitions"][0]["competitors"][n
   };
 }
 
-export function toCompactGame(fixture: ESPNFixture, leagueLabel = "PL", routeBase = "/epl/match"): CompactGameModel {
+export function toCompactGame(fixture: ESPNFixture, options: { leagueLabel: string; routeBase: string }): CompactGameModel {
   const competition = fixture.competitions[0];
   const home = competition.competitors.find((team) => team.homeAway === "home")!;
   const away = competition.competitors.find((team) => team.homeAway === "away")!;
@@ -23,9 +23,9 @@ export function toCompactGame(fixture: ESPNFixture, leagueLabel = "PL", routeBas
     : new Date(fixture.date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   return {
     id: fixture.id,
-    href: `${routeBase}/${fixture.id}`,
+    href: `${options.routeBase}/${fixture.id}`,
     accessibleLabel: `${home.team.displayName} vs ${away.team.displayName}`,
-    leagueLabel,
+    leagueLabel: options.leagueLabel,
     state,
     statusLabel,
     wire: state === "live" && parseInt(competition.status.displayClock) >= 88,
@@ -37,7 +37,7 @@ function stat(entry: ESPNStandingEntry, name: string) {
   return entry.stats.find((item) => item.name === name)?.displayValue ?? "–";
 }
 
-export function toCompactStanding(entry: ESPNStandingEntry, index: number, routeBase = "/epl/team"): CompactStandingModel {
+export function toCompactStanding(entry: ESPNStandingEntry, index: number, routeBase: string): CompactStandingModel {
   return {
     id: entry.team.id,
     href: `${routeBase}/${entry.team.id}`,

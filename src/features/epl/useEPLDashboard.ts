@@ -112,6 +112,10 @@ export function useEPLDashboard() {
     () => standingsMode === "live" ? computePositionChanges(standings, matchweekStats) : new Map<string, number>(),
     [matchweekStats, standings, standingsMode],
   );
+  const liveCount = useMemo(
+    () => fixtures.filter((fixture) => fixture.competitions[0].status.type.state === "in").length,
+    [fixtures],
+  );
 
   return {
     changeMatchweek,
@@ -120,7 +124,7 @@ export function useEPLDashboard() {
     fixtures,
     fixturesError,
     leagueLogo,
-    liveCount: fixtures.filter((fixture) => fixture.competitions[0].status.type.state === "in").length,
+    liveCount,
     loadingFixtures,
     loadingNews,
     loadingSnapshot,

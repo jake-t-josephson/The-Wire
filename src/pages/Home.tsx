@@ -34,12 +34,12 @@ export default function Home() {
       .finally(() => setLoadingWireroom(false));
   }, []);
 
-  const compactGames = fixtures.map((fixture) => toCompactGame(fixture));
-  const compactStandings = standings.map((entry, index) => toCompactStanding(entry, index));
+  const compactGames = fixtures.map((fixture) => toCompactGame(fixture, { leagueLabel: "PL", routeBase: "/epl/match" }));
+  const compactStandings = standings.map((entry, index) => toCompactStanding(entry, index, "/epl/team"));
   const liveGames = compactGames.filter((game) => game.state === "live");
   return (
     <>
-      {liveGames.length > 0 && <LiveRail fixtures={liveGames} />}
+      {liveGames.length > 0 && <LiveRail games={liveGames} />}
       <div className="home-grid">
         <main className="home-editorial">
           <WireroomBlock brief={brief} fallbackArticles={fallbackArticles} loading={loadingWireroom} />
