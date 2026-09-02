@@ -10,14 +10,6 @@ const ESPN_NEWS       = "https://site.api.espn.com/apis/site/v2/sports/soccer/en
 const GUARDIAN_RSS    = "https://www.theguardian.com/football/premierleague/rss";
 const UA              = "Mozilla/5.0 (compatible; TheWire/1.0)";
 
-const EPL_TERMS = [
-  "premier league", "epl", "man city", "manchester city",
-  "liverpool", "arsenal", "chelsea", "tottenham", "spurs",
-  "man united", "manchester united", "newcastle", "aston villa",
-  "west ham", "brighton", "brentford", "fulham", "everton",
-  "nottm forest", "nottingham", "bournemouth", "wolves", "crystal palace",
-];
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface RawArticle {
@@ -46,10 +38,9 @@ interface Brief {
 async function fetchEspn(): Promise<RawArticle[]> {
   try {
     const res = await fetch(ESPN_NEWS, { headers: { "User-Agent": UA } });
-    console.log("ESPN status:", res.status);
-    if (!res.ok) { console.error("ESPN error:", res.status, await res.text()); return []; }
+    if (!res.ok) return [];
     const data = await res.json();
-    const articles = (data.articles ?? []).map((a: Record<string, unknown>) => ({
+    return (data.articles ?? []).map((a: Record<string, unknown>) => ({
       url:       (a.links as Record<string, Record<string, string>>)?.web?.href ?? "",
       source:    "ESPN",
       sourceKey: "espn",
@@ -57,9 +48,7 @@ async function fetchEspn(): Promise<RawArticle[]> {
       body:      (a.description as string) ?? "",
       published: (a.published as string) ?? new Date().toISOString(),
     })).filter((a: RawArticle) => a.url && a.headline);
-    console.log("ESPN articles:", articles.length);
-    return articles;
-  } catch (e) { console.error("ESPN fetch failed:", e); return []; }
+  } catch { return []; }
 }
 
 function rssTag(xml: string, tag: string): string {
@@ -80,10 +69,8 @@ function cleanDesc(raw: string): string {
 async function fetchGuardian(): Promise<RawArticle[]> {
   try {
     const res = await fetch(GUARDIAN_RSS, { headers: { "User-Agent": UA } });
-    console.log("Guardian status:", res.status);
-    if (!res.ok) { console.error("Guardian error:", res.status); return []; }
+    if (!res.ok) return [];
     const xml = await res.text();
-
     const articles: RawArticle[] = [];
     for (const match of xml.matchAll(/<item[^>]*>([\s\S]*?)<\/item>/g)) {
       const item     = match[1];
@@ -95,24 +82,24 @@ async function fetchGuardian(): Promise<RawArticle[]> {
         articles.push({ url: link, source: "The Guardian", sourceKey: "guardian", headline, body: desc, published: pubDate ? new Date(pubDate).toISOString() : new Date().toISOString() });
       }
     }
-    console.log("Guardian articles:", articles.length);
     return articles;
-  } catch (e) { console.error("Guardian fetch failed:", e); return []; }
+  } catch { return []; }
 }
 
 // ── AI brief generation ───────────────────────────────────────────────────────
 
-async function generateBrief(articles: RawArticle[]): Promise<Brief> {
+// Returns null when AI generation fails; callers fall back to the last stored brief.
+async function generateBrief(articles: RawArticle[]): Promise<Brief | null> {
   const key = Deno.env.get("GROQ_API_KEY");
-  if (!key || articles.length === 0) return fallbackBrief(articles);
+  if (!key || articles.length === 0) return null;
 
-  const top         = articles.slice(0, 15);
-  const articleText = top
+  const articleText = articles.slice(0, 15)
     .map((a, i) => `${i + 1}. [${a.source}] ${a.headline}\n${a.body}`)
     .join("\n\n");
 
+  let res: Response;
   try {
-    const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method:  "POST",
       headers: {
         "Authorization": `Bearer ${key}`,
@@ -150,58 +137,33 @@ ${articleText}`,
         }],
       }),
     });
+  } catch { return null; }
 
-    if (!res.ok) { console.error("Groq error:", res.status, await res.text()); return { ...fallbackBrief(articles), _dbg: "groq-http-err" } as Brief & { _dbg: string }; }
-    const data  = await res.json();
-    const text  = (data.choices?.[0]?.message?.content as string) ?? "";
-    console.log("Groq text length:", text.length, "first100:", text.slice(0, 100));
+  if (!res.ok) return null;
 
-    // Extract outermost JSON object using bracket balancing
-    const start = text.indexOf("{");
-    if (start !== -1) {
-      let depth = 0; let inStr = false; let escaped = false; let end = -1;
-      for (let i = start; i < text.length; i++) {
-        const c = text[i];
-        if (escaped) { escaped = false; continue; }
-        if (c === "\\" && inStr) { escaped = true; continue; }
-        if (c === '"') { inStr = !inStr; continue; }
-        if (inStr) continue;
-        if (c === "{") depth++;
-        else if (c === "}") { depth--; if (depth === 0) { end = i; break; } }
-      }
-      if (end !== -1) {
-        const candidate = text.slice(start, end + 1)
-          .replace(/\}\s*\n(\s*)\{/g, "},\n$1{")
-          .replace(/\]\s*\n(\s*)\[/g, "],\n$1[");
-        try { return JSON.parse(candidate) as Brief; } catch (e) { console.error("JSON parse failed:", e, "candidate tail:", candidate.slice(-200)); return { ...fallbackBrief(articles), _dbg: "json-parse-failed" } as Brief & { _dbg: string }; }
-      }
-      return { ...fallbackBrief(articles), _dbg: "no-end-bracket" } as Brief & { _dbg: string };
-    }
-    return { ...fallbackBrief(articles), _dbg: "no-start-bracket" } as Brief & { _dbg: string };
-  } catch (e) { console.error("Groq fetch threw:", e); return { ...fallbackBrief(articles), _dbg: `threw:${e}` } as Brief & { _dbg: string }; }
+  const data = await res.json();
+  const text = (data.choices?.[0]?.message?.content as string) ?? "";
 
-  return fallbackBrief(articles);
-}
+  // Extract outermost JSON object using bracket balancing
+  const start = text.indexOf("{");
+  if (start === -1) return null;
 
-function fallbackBrief(articles: RawArticle[]): Brief {
-  const results   = articles.filter((a) => a.sourceKey === "guardian").slice(0, 3);
-  const transfers = articles.filter((a) => a.sourceKey === "espn").slice(0, 2);
-  const sections: Section[] = [];
-  if (results.length > 0) {
-    sections.push({
-      theme: "Results", heading: "THIS WEEK ON THE PITCH",
-      body: results.map((a) => a.headline).join(". "),
-      links: results.map((a) => ({ label: a.headline.slice(0, 50), url: a.url })),
-    });
+  let depth = 0, inStr = false, escaped = false, end = -1;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (escaped)          { escaped = false; continue; }
+    if (c === "\\" && inStr) { escaped = true; continue; }
+    if (c === '"')        { inStr = !inStr; continue; }
+    if (inStr)            continue;
+    if (c === "{")        depth++;
+    else if (c === "}") { depth--; if (depth === 0) { end = i; break; } }
   }
-  if (transfers.length > 0) {
-    sections.push({
-      theme: "Transfers", heading: "TRANSFER WINDOW",
-      body: transfers.map((a) => a.headline).join(". "),
-      links: transfers.map((a) => ({ label: a.headline.slice(0, 50), url: a.url })),
-    });
-  }
-  return { title: "THIS WEEK IN THE PREMIER LEAGUE", sections };
+  if (end === -1) return null;
+
+  const candidate = text.slice(start, end + 1)
+    .replace(/\}\s*\n(\s*)\{/g, "},\n$1{")
+    .replace(/\]\s*\n(\s*)\[/g, "],\n$1[");
+  try { return JSON.parse(candidate) as Brief; } catch { return null; }
 }
 
 // ── Handler ───────────────────────────────────────────────────────────────────
@@ -218,7 +180,6 @@ Deno.serve(async (req) => {
 
   const body   = req.method === "POST" ? await req.json().catch(() => ({})) : {};
   const forced = body?.force === true;
-
 
   // Check if we have a fresh brief already
   const { data: latest } = await supabase
@@ -278,43 +239,43 @@ Deno.serve(async (req) => {
     (a, b) => new Date(b.published).getTime() - new Date(a.published).getTime(),
   ).slice(0, 16);
   const brief = await generateBrief(top);
-  const anyBrief = brief as Brief & { _dbg?: string };
-  const isAI = !anyBrief._dbg; // _dbg is only set on fallbacks
 
-  // Only persist AI-generated briefs — never overwrite with a fallback
-  let insertedId: string | undefined;
-  if (isAI) {
-    const { data: inserted } = await supabase
-      .from("wireroom_briefs")
-      .insert({
-        league:       "epl",
-        generated_at: new Date().toISOString(),
-        lead_brief:   brief,
-        secondaries:  [],
-        source_count: all.length,
-        article_ids:  top.map((a) => a.url),
-      })
-      .select("id")
-      .single();
-    insertedId = inserted?.id;
-  } else if (latest) {
-    // Serve the last good brief from DB (stale is better than raw fallback)
-    const stored = latest.lead_brief as Brief;
-    return Response.json(
-      {
-        title:       stored.title,
-        sections:    stored.sections,
-        sourceCount: latest.source_count,
-        generatedAt: latest.generated_at,
-        cached:      true,
-      },
-      { headers: { ...CORS, "Content-Type": "application/json" } },
-    );
+  // AI generation failed — serve the last stored brief rather than a raw fallback
+  if (!brief) {
+    if (latest) {
+      const stored = latest.lead_brief as Brief;
+      return Response.json(
+        {
+          title:       stored.title,
+          sections:    stored.sections,
+          sourceCount: latest.source_count,
+          generatedAt: latest.generated_at,
+          cached:      true,
+        },
+        { headers: { ...CORS, "Content-Type": "application/json" } },
+      );
+    }
+    return new Response(JSON.stringify({ error: "No brief available" }), {
+      status: 503, headers: { ...CORS, "Content-Type": "application/json" },
+    });
   }
+
+  const { data: inserted } = await supabase
+    .from("wireroom_briefs")
+    .insert({
+      league:       "epl",
+      generated_at: new Date().toISOString(),
+      lead_brief:   brief,
+      secondaries:  [],
+      source_count: all.length,
+      article_ids:  top.map((a) => a.url),
+    })
+    .select("id")
+    .single();
 
   return Response.json(
     {
-      id:          insertedId,
+      id:          inserted?.id,
       title:       brief.title,
       sections:    brief.sections,
       sourceCount: all.length,

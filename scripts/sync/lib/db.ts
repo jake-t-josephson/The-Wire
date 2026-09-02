@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { ESPNTeam, ESPNFixture, ESPNTeamMatchStats, ESPNStandingEntry, ESPNArticle } from "./espn.ts";
+import type { ESPNTeam, ESPNFixture, ESPNTeamMatchStats, ESPNArticle } from "./espn.ts";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -207,6 +207,24 @@ export async function insertStandingsSnapshot(
     .from("standings_snapshots")
     .upsert(rows, { onConflict: "league,season,matchweek,team_id" });
   if (error) throw new Error(`insertStandingsSnapshot: ${error.message}`);
+}
+
+// ── League ────────────────────────────────────────────────────────────────────
+
+export async function upsertLeague(opts: {
+  slug: string; apiId: string; name: string; logoUrl: string | null; darkLogoUrl: string | null;
+}): Promise<void> {
+  const { error } = await supabase
+    .from("leagues")
+    .upsert({
+      slug:          opts.slug,
+      api_id:        opts.apiId,
+      name:          opts.name,
+      logo_url:      opts.logoUrl,
+      dark_logo_url: opts.darkLogoUrl,
+      updated_at:    new Date().toISOString(),
+    }, { onConflict: "slug" });
+  if (error) throw new Error(`upsertLeague: ${error.message}`);
 }
 
 // ── News ──────────────────────────────────────────────────────────────────────

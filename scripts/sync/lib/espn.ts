@@ -97,11 +97,26 @@ export function currentMatchweekIndex(matchweeks: Matchweek[]): number {
 
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 
-export async function fetchCalendar(): Promise<{ calendar: string[]; season: number }> {
+export interface ESPNLeagueInfo {
+  id: string;
+  name: string;
+  logoUrl: string | null;
+  darkLogoUrl: string | null;
+}
+
+export async function fetchCalendar(): Promise<{ calendar: string[]; season: number; league: ESPNLeagueInfo }> {
   const data = await get(`${SPORT_BASE}/soccer/eng.1/scoreboard`);
+  const l = data.leagues?.[0] ?? {};
+  const logos: Array<{ href: string; rel: string[] }> = l.logos ?? [];
   return {
-    calendar: data.leagues?.[0]?.calendar ?? [],
-    season: data.season?.year ?? new Date().getFullYear(),
+    calendar:    l.calendar ?? [],
+    season:      data.season?.year ?? new Date().getFullYear(),
+    league: {
+      id:          l.id ?? "700",
+      name:        l.name ?? "English Premier League",
+      logoUrl:     logos.find((x) => x.rel?.includes("default"))?.href ?? null,
+      darkLogoUrl: logos.find((x) => x.rel?.includes("dark"))?.href ?? null,
+    },
   };
 }
 

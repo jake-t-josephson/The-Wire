@@ -5,12 +5,12 @@ import {
   fetchNews,
   groupMatchweeks,
   currentMatchweekIndex,
-  type ESPNFixture,
 } from "./lib/espn.ts";
 
 import {
   upsertTeam,
   upsertFixture,
+  upsertLeague,
   getTeamDbIds,
   hasMatchStats,
   upsertMatchStats,
@@ -24,8 +24,9 @@ import {
 async function syncEPL() {
   console.log(`[sync:epl] ${new Date().toISOString()} — starting`);
 
-  // 1. Calendar → matchweeks
-  const { calendar, season } = await fetchCalendar();
+  // 1. Calendar → matchweeks + league metadata
+  const { calendar, season, league } = await fetchCalendar();
+  await upsertLeague({ slug: "epl", apiId: league.id, name: league.name, logoUrl: league.logoUrl, darkLogoUrl: league.darkLogoUrl });
   const matchweeks = groupMatchweeks(calendar);
   const mwIndex = currentMatchweekIndex(matchweeks);
 

@@ -45,7 +45,7 @@ for (const absolutePath of sourceFiles(SRC)) {
   const path = relative(ROOT, absolutePath);
   const source = readFileSync(absolutePath, "utf8");
 
-  if (path.endsWith(".tsx") && path !== "src/lib/sourceMeta.ts") {
+  if (path.endsWith(".tsx")) {
     for (const match of source.matchAll(/#[0-9a-f]{3,8}\b|rgba?\s*\(/gi)) {
       failures.push(`${path}:${lineNumber(source, match.index)} uses a raw color; use a semantic token or sourceMeta.ts`);
     }

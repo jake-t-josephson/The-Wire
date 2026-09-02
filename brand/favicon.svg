@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="The Wire">
+  <rect width="64" height="64" rx="14" fill="#0E0F10"></rect>
+  <path d="M0 46.5H56" stroke="#EFEBE4" stroke-width="4"></path>
+  <path d="M14.88 10.88 20.88 11.25 24.38 41.7 29.75 10.88 34.75 11.13 39.88 41.8 43 10.88 49 10.88 43.13 52.38 36.88 52.38 32.25 23.63 27.13 52.38 20.88 52.38Z" fill="#EFEBE4" stroke="#0E0F10" stroke-width="3" paint-order="stroke"></path>
+  <circle cx="56" cy="46.5" r="6.6" fill="#0E0F10"></circle>
+  <circle cx="56" cy="46.5" r="4.4" fill="#EE5A16"></circle>
+</svg>

@@ -23,7 +23,7 @@ export function GameRow({ game }: { game: GameRowModel }) {
   const final = game.state === "final";
   const live = game.state === "live";
   return (
-    <article className="game-row" data-state={game.state} aria-label={game.accessibleLabel}>
+    <article className="game-row" data-state={game.state}>
       {game.href && <Link className="game-row__link" to={game.href} aria-label={game.accessibleLabel} />}
       <GameSide side={game.left} position="left" final={final} />
       <div className="game-row__center">
