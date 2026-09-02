@@ -8,8 +8,6 @@ const SRC = join(ROOT, "src");
 // New files default to zero, preventing the debt from spreading.
 const INLINE_STYLE_BASELINE = {
   "src/components/ui/Skeleton.tsx": 1,
-  "src/pages/Podcasts.tsx": 1,
-  "src/pages/epl/MatchDetail.tsx": 4,
 };
 
 const failures = [];

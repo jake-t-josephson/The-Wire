@@ -6,4 +6,5 @@
 @import "./components/sports/sports.css";
 @import "./pages/home.css";
 @import "./pages/podcasts.css";
+@import "./pages/match-detail.css";
 @import "./components/player/player.css";

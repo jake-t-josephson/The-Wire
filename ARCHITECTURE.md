@@ -334,7 +334,14 @@ Completed foundations:
 
 Next priorities:
 
-1. Move page data-loading state into league feature hooks as it grows.
-2. Add normalized models for the compact Home live rail and slate when a second league joins those surfaces.
-3. Expand page-level tests for loading, empty, error, and route transitions.
-4. Continue lowering the remaining transitional inline-style ceilings in Match Detail and Podcasts.
+1. Add URL-backed league filters when dashboard views become shareable.
+2. Add a second compact-game adapter when another league joins the Home slate.
+3. Expand hook tests around stale requests and rapid period changes.
+4. Continue replacing utility-heavy page markup with named feature styles as those screens evolve.
+
+Recently completed:
+
+- EPL and NFL data-loading state now lives in league feature hooks.
+- Home live rail, slate, and mini standings consume compact normalized models.
+- Page tests cover loading, empty, error, success, route transition, and period navigation behavior.
+- Match Detail and Podcasts no longer require transitional inline-style allowances; native progress elements expose their values accessibly.

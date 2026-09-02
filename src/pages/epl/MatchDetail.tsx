@@ -36,10 +36,7 @@ function PossessionBar({ home, away }: { home: number; away: number }) {
         <span className="label-caps text-muted">Possession</span>
         <span className="text-sm font-semibold text-bone tabular-nums">{away}%</span>
       </div>
-      <div className="h-1.5 rounded-full overflow-hidden flex">
-        <div className="h-full bg-signal transition-all duration-500" style={{ width: `${home}%` }} />
-        <div className="h-full bg-silver transition-all duration-500" style={{ width: `${away}%` }} />
-      </div>
+      <progress className="match-possession" max={100} value={home} aria-label={`Home possession ${home}%, away possession ${away}%`} />
     </div>
   );
 }
@@ -60,11 +57,11 @@ function StatRow({ label, home, away }: { label: string; home: number; away: num
       </div>
       <div className="flex gap-1 items-center">
         <div className="flex-1 flex justify-end">
-          <div className="h-1 rounded-l-full bg-signal transition-all duration-500" style={{ width: `${homeW}%` }} />
+          <progress className="match-stat-bar match-stat-bar--home" max={100} value={homeW} aria-label={`${label}, home ${home}`} />
         </div>
         <div className="w-px h-2 bg-hairline flex-shrink-0" />
         <div className="flex-1">
-          <div className="h-1 rounded-r-full bg-silver transition-all duration-500" style={{ width: `${awayW}%` }} />
+          <progress className="match-stat-bar match-stat-bar--away" max={100} value={awayW} aria-label={`${label}, away ${away}`} />
         </div>
       </div>
     </div>
@@ -137,7 +134,7 @@ function MatchSkeleton() {
   );
 }
 
-function MatchContent({ summary }: { summary: ESPNMatchSummary }) {
+export function MatchContent({ summary }: { summary: ESPNMatchSummary }) {
   const { homeTeam, awayTeam, status, date, venue, homeStats, awayStats } = summary;
   const isLive = status.state === "in";
   const isPre  = status.state === "pre";

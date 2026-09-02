@@ -3,6 +3,7 @@ import { fetchFixtures, fetchNews, fetchStandings, groupMatchweeks, currentMatch
 import { fetchWireroom } from "../lib/supabase";
 import type { WireroomBrief } from "../lib/articles";
 import { ColumnSection, HomeSidebar, LiveRail, WireroomBlock } from "../features/home/HomeSections";
+import { toCompactGame, toCompactStanding } from "../lib/adapters/home";
 
 export default function Home() {
   const [fixtures, setFixtures] = useState<ESPNFixture[]>([]);
@@ -33,7 +34,9 @@ export default function Home() {
       .finally(() => setLoadingWireroom(false));
   }, []);
 
-  const liveGames = fixtures.filter((fixture) => fixture.competitions[0].status.type.state === "in");
+  const compactGames = fixtures.map((fixture) => toCompactGame(fixture));
+  const compactStandings = standings.map((entry, index) => toCompactStanding(entry, index));
+  const liveGames = compactGames.filter((game) => game.state === "live");
   return (
     <>
       {liveGames.length > 0 && <LiveRail fixtures={liveGames} />}
@@ -43,7 +46,7 @@ export default function Home() {
           <ColumnSection />
         </main>
         <aside className="home-sidebar">
-          <HomeSidebar fixtures={fixtures} standings={standings} gameweek={gameweek} loading={loadingData} />
+          <HomeSidebar games={compactGames} standings={compactStandings} gameweek={gameweek} loading={loadingData} />
         </aside>
       </div>
     </>

@@ -42,7 +42,7 @@ function FeedCard({
 
 // ── Episode row ───────────────────────────────────────────────────────────────
 
-function EpisodeRow({
+export function EpisodeRow({
   episode,
   progress,
   active,
@@ -67,9 +67,7 @@ function EpisodeRow({
           {progress?.completed && <span className="episode-row__badge">✓</span>}
         </div>
         {pct > 0 && !progress?.completed && (
-          <div className="episode-row__progress">
-            <div className="episode-row__progress-fill" style={{ width: `${pct}%` }} />
-          </div>
+          <progress className="episode-row__progress" max={100} value={pct} aria-label={`${Math.round(pct)}% played`} />
         )}
       </div>
       <span className="episode-row__play" aria-hidden="true">

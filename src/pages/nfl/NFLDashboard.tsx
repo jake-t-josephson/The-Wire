@@ -1,9 +1,4 @@
-import { useState, useEffect } from "react";
-import {
-  fetchNFLScoreboard, fetchNFLStandings, fetchNFLNews,
-  weekDateRange, NFL_TOTAL_WEEKS,
-  type NFLGame, type NFLConference, type NFLArticle,
-} from "../../lib/nfl";
+import { NFL_TOTAL_WEEKS } from "../../lib/nfl";
 import { PageContainer, PageHeader } from "../../components/layout/Page";
 import { StatusDot } from "../../components/sports/StatusDot";
 import { Button } from "../../components/ui/Button";
@@ -18,67 +13,35 @@ import { GameRow } from "../../components/sports/GameRow";
 import { toNFLGameRow } from "../../lib/adapters/nfl";
 import { StandingsTable } from "../../components/sports/StandingsTable";
 import { NFL_STANDING_COLUMNS, toNFLConferenceStandings, toNFLDivisionStandings } from "../../lib/adapters/standings";
+import { useNFLDashboard, type NFLDashboardModel } from "../../features/nfl/useNFLDashboard";
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-type StandingsView = "division" | "conference";
-type ConfTab = "AFC" | "NFC";
-
 export default function NFLDashboard() {
-  const [week,         setWeek]         = useState<number>(1);
-  const [season,       setSeason]       = useState<number>(new Date().getFullYear());
-  const [games,        setGames]        = useState<NFLGame[]>([]);
-  const [dateRange,    setDateRange]    = useState("");
-  const [leagueLogo,   setLeagueLogo]   = useState<string | null>(null);
-  const [conferences,  setConferences]  = useState<NFLConference[]>([]);
-  const [standView,    setStandView]    = useState<StandingsView>("division");
-  const [confTab,      setConfTab]      = useState<ConfTab>("AFC");
-  const [news,         setNews]         = useState<NFLArticle[]>([]);
-  const [loadingGames, setLoadingGames] = useState(true);
-  const [loadingStd,   setLoadingStd]   = useState(true);
-  const [loadingNews,  setLoadingNews]  = useState(true);
-  const [errorGames,   setErrorGames]   = useState(false);
-  const [errorStd,     setErrorStd]     = useState(false);
+  return <NFLDashboardView model={useNFLDashboard()} />;
+}
 
-  // Initial load: get current week from API
-  useEffect(() => {
-    fetchNFLScoreboard()
-      .then(({ week: w, season: s, games: g, leagueLogo: logo }) => {
-        setWeek(w);
-        setSeason(s);
-        setGames(g);
-        setDateRange(weekDateRange(g));
-        if (logo) setLeagueLogo(logo);
-      })
-      .catch(() => setErrorGames(true))
-      .finally(() => setLoadingGames(false));
-
-    fetchNFLStandings()
-      .then(setConferences)
-      .catch(() => setErrorStd(true))
-      .finally(() => setLoadingStd(false));
-
-    fetchNFLNews()
-      .then(setNews)
-      .finally(() => setLoadingNews(false));
-  }, []);
-
-  const changeWeek = (nextWeek: number) => {
-    setLoadingGames(true);
-    setErrorGames(false);
-    setWeek(nextWeek);
-    fetchNFLScoreboard(nextWeek)
-      .then(({ season: s, games: g }) => {
-        setSeason(s);
-        setGames(g);
-        setDateRange(weekDateRange(g));
-      })
-      .catch(() => setErrorGames(true))
-      .finally(() => setLoadingGames(false));
-  };
-
-  const liveCount  = games.filter((g) => g.competitions[0].status.type.state === "in").length;
-  const activeConf = conferences.find((c) => c.shortName === confTab);
+export function NFLDashboardView({ model }: { model: NFLDashboardModel }) {
+  const {
+    activeConference: activeConf,
+    changeWeek,
+    conferenceTab: confTab,
+    dateRange,
+    games,
+    gamesError: errorGames,
+    leagueLogo,
+    liveCount,
+    loadingGames,
+    loadingNews,
+    loadingStandings: loadingStd,
+    news,
+    season,
+    setConferenceTab: setConfTab,
+    setStandingsView: setStandView,
+    standingsError: errorStd,
+    standingsView: standView,
+    week,
+  } = model;
 
   return (
     <PageContainer>

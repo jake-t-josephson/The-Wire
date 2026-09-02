@@ -1,0 +1,23 @@
+.match-possession,
+.match-stat-bar {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border: 0;
+  appearance: none;
+  background: transparent;
+}
+
+.match-possession { height: 0.375rem; border-radius: 999px; }
+.match-possession::-webkit-progress-bar { background: var(--color-silver); }
+.match-possession::-webkit-progress-value,
+.match-possession::-moz-progress-bar { background: var(--color-signal); }
+
+.match-stat-bar { height: 0.25rem; }
+.match-stat-bar--home { direction: rtl; border-radius: 999px 0 0 999px; }
+.match-stat-bar--away { border-radius: 0 999px 999px 0; }
+.match-stat-bar::-webkit-progress-bar { background: transparent; }
+.match-stat-bar--home::-webkit-progress-value,
+.match-stat-bar--home::-moz-progress-bar { background: var(--color-signal); }
+.match-stat-bar--away::-webkit-progress-value,
+.match-stat-bar--away::-moz-progress-bar { background: var(--color-silver); }

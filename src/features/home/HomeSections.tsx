@@ -1,35 +1,30 @@
 import { Link } from "react-router-dom";
-import type { ESPNArticle, ESPNFixture, ESPNStandingEntry } from "../../lib/espn";
+import type { ESPNArticle } from "../../lib/espn";
 import type { WireroomBrief, WireroomSection } from "../../lib/articles";
+import type { CompactGameModel, CompactStandingModel } from "../../models/home";
 import { StatusDot } from "../../components/sports/StatusDot";
 import { TeamCrest } from "../../components/sports/TeamCrest";
 import { Skeleton } from "../../components/ui/Skeleton";
 
-function LiveCard({ fixture }: { fixture: ESPNFixture }) {
-  const competition = fixture.competitions[0];
-  const status = competition.status.type;
-  const home = competition.competitors.find((team) => team.homeAway === "home")!;
-  const away = competition.competitors.find((team) => team.homeAway === "away")!;
-  const live = status.state === "in";
-  const done = status.state === "post";
-  const clock = competition.status.displayClock;
-  const wire = live && parseInt(clock) >= 88;
-  const teamClass = (winner: boolean) => `live-card__team-name${done && !winner ? " live-card__team-name--dim" : ""}`;
-  const scoreClass = (winner: boolean) => `live-card__score${done && !winner ? " live-card__score--dim" : ""}`;
+function LiveCard({ game }: { game: CompactGameModel }) {
+  const live = game.state === "live";
+  const final = game.state === "final";
+  const teamClass = (winner: boolean) => `live-card__team-name${final && !winner ? " live-card__team-name--dim" : ""}`;
+  const scoreClass = (winner: boolean) => `live-card__score${final && !winner ? " live-card__score--dim" : ""}`;
   return (
-    <Link className="live-card" to={`/epl/match/${fixture.id}`} aria-label={`${home.team.displayName} vs ${away.team.displayName}`}>
+    <Link className="live-card" to={game.href} aria-label={game.accessibleLabel}>
       {live && <div className="live-card__bar" />}
       <div className="live-card__header" data-live={live || undefined}>
-        <StatusDot state={live ? (wire ? "wire" : "live") : "final"} />
-        <span className="live-card__clock">{live ? clock : "Final"}</span>
-        <span className="live-card__league-tag">PL</span>
+        <StatusDot state={live ? (game.wire ? "wire" : "live") : "final"} />
+        <span className="live-card__clock">{game.statusLabel}</span>
+        <span className="live-card__league-tag">{game.leagueLabel}</span>
       </div>
       <div className="live-card__teams" data-live={live || undefined}>
-        {[home, away].map((competitor) => (
-          <div key={competitor.homeAway} className="live-card__team">
-            <TeamCrest src={competitor.team.logo} name={competitor.team.displayName} abbreviation={competitor.team.abbreviation} size={20} />
-            <span className={teamClass(!!competitor.winner)}>{competitor.team.shortDisplayName}</span>
-            <span className={scoreClass(!!competitor.winner)}>{competitor.score}</span>
+        {game.teams.map((team) => (
+          <div key={team.id} className="live-card__team">
+            <TeamCrest src={team.crest} name={team.name} abbreviation={team.abbreviation} size={20} />
+            <span className={teamClass(!!team.winner)}>{team.shortName}</span>
+            <span className={scoreClass(!!team.winner)}>{team.score}</span>
           </div>
         ))}
       </div>
@@ -37,7 +32,7 @@ function LiveCard({ fixture }: { fixture: ESPNFixture }) {
   );
 }
 
-export function LiveRail({ fixtures }: { fixtures: ESPNFixture[] }) {
+export function LiveRail({ fixtures }: { fixtures: CompactGameModel[] }) {
   const now = new Date();
   const dateLabel = now.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   const timeLabel = now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
@@ -50,7 +45,7 @@ export function LiveRail({ fixtures }: { fixtures: ESPNFixture[] }) {
           <span className="live-rail__meta">{dateLabel} · {timeLabel}</span>
           <span className="live-rail__count">{fixtures.length} game{fixtures.length !== 1 ? "s" : ""}</span>
         </div>
-        <div className="live-rail__games" data-columns={columns}>{fixtures.slice(0, 4).map((fixture) => <LiveCard key={fixture.id} fixture={fixture} />)}</div>
+        <div className="live-rail__games" data-columns={columns}>{fixtures.slice(0, 4).map((game) => <LiveCard key={game.id} game={game} />)}</div>
       </div>
     </div>
   );
@@ -109,33 +104,26 @@ export function ColumnSection() {
   return <div className="column-section"><div className="column-section__header"><span className="column-section__label">The Column</span><div className="column-section__rule" /><span className="column-section__tag">Weekly</span></div><p className="column-section__placeholder">The Column is coming soon — a place for long-form writing about what actually happened.</p></div>;
 }
 
-function TodaySlate({ fixtures }: { fixtures: ESPNFixture[] }) {
-  return <div><div className="slate-header">Today's slate</div><div>{fixtures.slice(0, 8).map((fixture) => {
-    const competition = fixture.competitions[0];
-    const home = competition.competitors.find((team) => team.homeAway === "home")!;
-    const away = competition.competitors.find((team) => team.homeAway === "away")!;
-    const { type: status, displayClock } = competition.status;
-    const time = status.state === "post" ? "FT" : status.state === "in" ? displayClock : new Date(fixture.date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-    return <Link key={fixture.id} className="slate-row" to={`/epl/match/${fixture.id}`}><span className="slate-row__time">{time}</span><span className="slate-row__teams">{home.team.shortDisplayName} · {away.team.shortDisplayName}</span><span className="slate-row__league">PL</span></Link>;
-  })}</div></div>;
+function TodaySlate({ games }: { games: CompactGameModel[] }) {
+  return <div><div className="slate-header">Today's slate</div><div>{games.slice(0, 8).map((game) => (
+    <Link key={game.id} className="slate-row" to={game.href} aria-label={game.accessibleLabel}><span className="slate-row__time">{game.statusLabel}</span><span className="slate-row__teams">{game.teams[0].shortName} · {game.teams[1].shortName}</span><span className="slate-row__league">{game.leagueLabel}</span></Link>
+  ))}</div></div>;
 }
 
-function MiniStandings({ entries, gameweek }: { entries: ESPNStandingEntry[]; gameweek: string }) {
+function MiniStandings({ entries, gameweek }: { entries: CompactStandingModel[]; gameweek: string }) {
   return (
     <div>
       <div className="standings-mini__label">Premier League · {gameweek}</div>
       <div className="standings-mini__col-heads"><span>#</span><span>Club</span><span>GD</span><span>Pts</span></div>
-      {entries.slice(0, 4).map((entry, index) => {
-        const stat = (name: string) => entry.stats.find((item) => item.name === name)?.displayValue ?? "–";
-        const position = parseInt(stat("rank")) || index + 1;
-        return <Link key={entry.team.id} className="standings-mini__row" to={`/epl/team/${entry.team.id}`}><span className={`standings-mini__pos${position === 1 ? " standings-mini__pos--first" : ""}`}>{position}</span><span className="standings-mini__club">{entry.team.shortDisplayName}</span><span className="standings-mini__gd">{stat("pointDifferential")}</span><span className="standings-mini__pts">{stat("points")}</span></Link>;
-      })}
+      {entries.slice(0, 4).map((entry) => (
+        <Link key={entry.id} className="standings-mini__row" to={entry.href}><span className={`standings-mini__pos${entry.position === 1 ? " standings-mini__pos--first" : ""}`}>{entry.position}</span><span className="standings-mini__club">{entry.teamName}</span><span className="standings-mini__gd">{entry.goalDifference}</span><span className="standings-mini__pts">{entry.points}</span></Link>
+      ))}
       <Link to="/epl" className="standings-mini__link">Full table →</Link>
     </div>
   );
 }
 
-export function HomeSidebar({ fixtures, standings, gameweek, loading }: { fixtures: ESPNFixture[]; standings: ESPNStandingEntry[]; gameweek: string; loading: boolean }) {
+export function HomeSidebar({ games, standings, gameweek, loading }: { games: CompactGameModel[]; standings: CompactStandingModel[]; gameweek: string; loading: boolean }) {
   if (loading) return <div className="space-y-3">{Array.from({ length: 7 }).map((_, index) => <Skeleton key={index} height={34} />)}</div>;
-  return <><TodaySlate fixtures={fixtures} /><div className="wire-sep"><div className="wire-sep__dot" /></div><MiniStandings entries={standings} gameweek={gameweek} /></>;
+  return <><TodaySlate games={games} /><div className="wire-sep"><div className="wire-sep__dot" /></div><MiniStandings entries={standings} gameweek={gameweek} /></>;
 }

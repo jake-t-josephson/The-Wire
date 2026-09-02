@@ -1,11 +1,4 @@
-import { useState, useEffect } from "react";
-import {
-  fetchFixtures, fetchStandings, fetchEPLNews,
-  groupMatchweeks, currentMatchweekIndex, groupByDate,
-  computeMatchweekStats, computePositionChanges,
-  type Matchweek, type ESPNFixture, type ESPNStandingEntry, type EPLArticle,
-} from "../../lib/espn";
-import { fetchHistoricalFixtures, fetchHistoricalStandings } from "../../lib/supabase";
+import type { Matchweek } from "../../lib/espn";
 import { PageContainer, PageHeader } from "../../components/layout/Page";
 import { StatusDot } from "../../components/sports/StatusDot";
 import { SegmentedControl } from "../../components/ui/SegmentedControl";
@@ -20,6 +13,7 @@ import { GameRow } from "../../components/sports/GameRow";
 import { toEPLGameRow } from "../../lib/adapters/epl";
 import { StandingsLegend, StandingsTable } from "../../components/sports/StandingsTable";
 import { EPL_STANDING_COLUMNS, toEPLStandings } from "../../lib/adapters/standings";
+import { useEPLDashboard, type EPLDashboardModel } from "../../features/epl/useEPLDashboard";
 
 function matchweekDateRange(matchweek: Matchweek) {
   const format = (date: string) => new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -31,92 +25,33 @@ function matchweekDateRange(matchweek: Matchweek) {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function EPLDashboard() {
-  const [matchweeks,        setMatchweeks]        = useState<Matchweek[]>([]);
-  const [mwIndex,           setMwIndex]           = useState<number | null>(null);
-  const [liveMwIndex,       setLiveMwIndex]       = useState<number | null>(null);
-  const [season,            setSeason]            = useState<number>(new Date().getFullYear());
-  const [leagueLogo,        setLeagueLogo]        = useState<string | null>(null);
-  const [fixtures,          setFixtures]          = useState<ESPNFixture[]>([]);
-  const [liveStandings,     setLiveStandings]     = useState<ESPNStandingEntry[]>([]);
-  const [snapshotStandings, setSnapshotStandings] = useState<ESPNStandingEntry[]>([]);
-  const [standingsMode,     setStandingsMode]     = useState<"snapshot" | "live">("live");
-  const [news,              setNews]              = useState<EPLArticle[]>([]);
-  const [loadingFix,        setLoadingFix]        = useState(true);
-  const [loadingStd,        setLoadingStd]        = useState(true);
-  const [loadingSnap,       setLoadingSnap]       = useState(true);
-  const [loadingNews,       setLoadingNews]       = useState(true);
-  const [errorFix,          setErrorFix]          = useState(false);
-  const [errorStd,          setErrorStd]          = useState(false);
+  return <EPLDashboardView model={useEPLDashboard()} />;
+}
 
-  useEffect(() => {
-    fetchFixtures()
-      .then(({ calendar, season: yr, leagueLogo: logo }) => {
-        const weeks = groupMatchweeks(calendar);
-        const idx   = currentMatchweekIndex(weeks);
-        setMatchweeks(weeks);
-        setMwIndex(idx);
-        setLiveMwIndex(idx);
-        setSeason(yr);
-        if (logo) setLeagueLogo(logo);
-      })
-      .catch(() => { setErrorFix(true); setLoadingFix(false); });
-
-    fetchStandings()
-      .then(setLiveStandings)
-      .catch(() => setErrorStd(true))
-      .finally(() => setLoadingStd(false));
-
-    fetchEPLNews()
-      .then(setNews)
-      .finally(() => setLoadingNews(false));
-  }, []);
-
-  useEffect(() => {
-    if (mwIndex === null || liveMwIndex === null || matchweeks.length === 0) return;
-    const mw = matchweeks[mwIndex];
-    const isHistorical = mwIndex < liveMwIndex;
-
-    if (isHistorical) {
-      fetchHistoricalFixtures(mw.number)
-        .then((f) => {
-          if (f.length > 0) return setFixtures(f);
-          const p = mw.start === mw.end ? mw.start : `${mw.start}-${mw.end}`;
-          return fetchFixtures(p).then(({ fixtures }) => setFixtures(fixtures));
-        })
-        .catch(() => {
-          const p = mw.start === mw.end ? mw.start : `${mw.start}-${mw.end}`;
-          return fetchFixtures(p).then(({ fixtures }) => setFixtures(fixtures));
-        })
-        .finally(() => setLoadingFix(false));
-    } else {
-      const p = mw.start === mw.end ? mw.start : `${mw.start}-${mw.end}`;
-      fetchFixtures(p)
-        .then(({ fixtures }) => setFixtures(fixtures))
-        .catch(() => setErrorFix(true))
-        .finally(() => setLoadingFix(false));
-    }
-
-    fetchHistoricalStandings(mw.number, season)
-      .then(setSnapshotStandings)
-      .catch(() => setSnapshotStandings([]))
-      .finally(() => setLoadingSnap(false));
-  }, [mwIndex, liveMwIndex, matchweeks, season]);
-
-  const standings  = standingsMode === "live" ? liveStandings : snapshotStandings;
-  const liveCount  = fixtures.filter((f) => f.competitions[0].status.type.state === "in").length;
-  const days       = groupByDate(fixtures);
-  const mwStats    = standingsMode === "live" ? computeMatchweekStats(fixtures) : new Map();
-  const posChanges = standingsMode === "live" ? computePositionChanges(standings, mwStats) : new Map<string, number>();
-  const currentMw  = mwIndex !== null ? matchweeks[mwIndex] : null;
-
-  const changeMatchweek = (nextIndex: number) => {
-    setLoadingFix(true);
-    setLoadingSnap(true);
-    setErrorFix(false);
-    setSnapshotStandings([]);
-    setStandingsMode(liveMwIndex !== null && nextIndex < liveMwIndex ? "snapshot" : "live");
-    setMwIndex(nextIndex);
-  };
+export function EPLDashboardView({ model }: { model: EPLDashboardModel }) {
+  const {
+    changeMatchweek,
+    currentMatchweek: currentMw,
+    days,
+    fixtures,
+    fixturesError: errorFix,
+    leagueLogo,
+    liveCount,
+    loadingFixtures: loadingFix,
+    loadingNews,
+    loadingSnapshot: loadingSnap,
+    loadingStandings: loadingStd,
+    matchweekIndex: mwIndex,
+    matchweeks,
+    matchweekStats: mwStats,
+    news,
+    positionChanges: posChanges,
+    setStandingsMode,
+    snapshotStandings,
+    standings,
+    standingsError: errorStd,
+    standingsMode,
+  } = model;
 
   return (
     <PageContainer>
