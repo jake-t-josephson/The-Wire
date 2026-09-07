@@ -32,12 +32,11 @@ function eplStat(entry: ESPNStandingEntry, name: string) {
   return entry.stats.find((stat) => stat.name === name)?.displayValue ?? "–";
 }
 
-function eplZone(color = ""): StandingRowModel["zone"] {
-  const normalized = color.toLowerCase().replace("#", "");
-  if (normalized === "4ead6a") return "primary";
-  if (normalized === "81d6ac") return "secondary";
-  if (normalized === "f0a823") return "warning";
-  if (normalized === "f04f23") return "danger";
+function eplZone(rank: number): StandingRowModel["zone"] {
+  if (rank >= 1 && rank <= 4) return "primary";
+  if (rank <= 6) return "secondary";
+  if (rank === 7) return "warning";
+  if (rank >= 18) return "danger";
   return undefined;
 }
 
@@ -52,13 +51,14 @@ export function toEPLStandings(
       const matchweek = matchweekStats.get(entry.team.id);
       const gdDetail = matchweek?.gd ? (matchweek.gd > 0 ? `+${matchweek.gd}` : `${matchweek.gd}`) : undefined;
       const pointsDetail = matchweek?.pts ? `+${matchweek.pts}` : undefined;
+      const rank = parseInt(eplStat(entry, "rank")) || index + 1;
       return {
         id: entry.team.id,
         href: `/epl/team/${entry.team.id}`,
-        rank: parseInt(eplStat(entry, "rank")) || index + 1,
+        rank,
         movement: positionChanges.get(entry.team.id),
         team: teamModel(entry.team),
-        zone: eplZone(entry.note?.color),
+        zone: eplZone(rank),
         cells: {
           mp: { value: eplStat(entry, "gamesPlayed"), tone: "muted" },
           w: { value: eplStat(entry, "wins"), tone: "muted" },

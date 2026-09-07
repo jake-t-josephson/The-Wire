@@ -19,7 +19,7 @@ function matchweekDateRange(matchweek: Matchweek) {
   const format = (date: string) => new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const start = format(matchweek.dates[0]);
   const end = matchweek.dates.length > 1 ? format(matchweek.dates[matchweek.dates.length - 1]) : null;
-  return end ? `${start} – ${end}` : start;
+  return end ? `${start} · ${end}` : start;
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ export function EPLDashboardView({ model }: { model: EPLDashboardModel }) {
           )}
           {matchweeks.length > 0 && mwIndex !== null && (
             <PeriodNavigator
-              label={matchweeks[mwIndex]?.label ?? "Matchweek"}
+              label={matchweeks[mwIndex] ? `MW ${matchweeks[mwIndex].number}` : "MW 1"}
               detail={matchweeks[mwIndex] ? matchweekDateRange(matchweeks[mwIndex]) : undefined}
               previousLabel="Previous matchweek"
               nextLabel="Next matchweek"
@@ -77,6 +77,9 @@ export function EPLDashboardView({ model }: { model: EPLDashboardModel }) {
               onNext={() => changeMatchweek(Math.min(matchweeks.length - 1, mwIndex + 1))}
               previousDisabled={mwIndex === 0}
               nextDisabled={mwIndex === matchweeks.length - 1}
+              options={matchweeks.map((mw, i) => ({ label: `MW ${mw.number}`, value: i }))}
+              selectedIndex={mwIndex}
+              onSelect={changeMatchweek}
             />
           )}
           </>
@@ -145,7 +148,7 @@ export function EPLDashboardView({ model }: { model: EPLDashboardModel }) {
                 value={standingsMode}
                 onChange={setStandingsMode}
                 items={[
-                  { value: "snapshot", label: currentMw?.label ?? "GW", disabled: snapshotStandings.length === 0 },
+                  { value: "snapshot", label: currentMw ? `MW ${currentMw.number}` : "—", disabled: snapshotStandings.length === 0 },
                   { value: "live", label: "Live" },
                 ]}
               />

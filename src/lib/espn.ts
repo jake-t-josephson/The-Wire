@@ -116,7 +116,7 @@ export function groupMatchweeks(calendarDates: string[]): Matchweek[] {
 function buildMatchweek(number: number, dates: string[]): Matchweek {
   return {
     number,
-    label: `GW${number}`,
+    label: `Matchweek ${number}`,
     dates,
     start: dates[0].replace(/-/g, ""),
     end: dates[dates.length - 1].replace(/-/g, ""),

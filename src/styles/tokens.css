@@ -19,6 +19,12 @@
   --color-oxblood:  #7A2B2B;
   --color-amber:    #D97706;
 
+  /* Standings zone indicators */
+  --color-zone-cl:   #4EAD6A;
+  --color-zone-el:   #5BA4CF;
+  --color-zone-uecl: #F0A823;
+  --color-zone-rel:  #E05540;
+
   /* Fixed semantic surfaces */
   --color-editorial-bg:      #EFEBE4;
   --color-editorial-text:    #0E0F10;
@@ -58,8 +64,8 @@
   --color-silver:   #4A4E50;
   --color-bone:     #0E0F10;
 
-  --color-up:       #3D7A3D;
-  --color-down:     #8A3A27;
-  --color-amber:    #B05A10;
+  --color-up:       #4EAD6A;
+  --color-down:     #C05C42;
+  --color-amber:    #D97706;
 
 }
