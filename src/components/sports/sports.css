@@ -341,6 +341,22 @@
 .broadcast-badge:hover { opacity: 0.7; }
 .broadcast-badge__logo { width: 0.875rem; height: 0.875rem; border-radius: 2px; }
 
+.games-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.games-grid > :only-child {
+  grid-column: 1 / -1;
+  width: 50%;
+  justify-self: center;
+}
+
+@media (max-width: 40rem) {
+  .games-grid { grid-template-columns: 1fr; }
+  .games-grid > :only-child { width: 100%; justify-self: stretch; }
+}
+
 .standings-table { min-width: 25rem; }
 .standings-group + .standings-group { margin-top: 1.375rem; }
 

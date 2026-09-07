@@ -3,6 +3,7 @@ import {
   fetchNFLNews,
   fetchNFLScoreboard,
   fetchNFLStandings,
+  groupNFLByDate,
   weekDateRange,
   type NFLArticle,
   type NFLConference,
@@ -80,11 +81,14 @@ export function useNFLDashboard() {
     [games],
   );
 
+  const days = useMemo(() => groupNFLByDate(games), [games]);
+
   return {
     activeConference: conferences.find((conference) => conference.shortName === conferenceTab),
     changeWeek,
     conferenceTab,
     dateRange,
+    days,
     games,
     gamesError,
     leagueLogo,

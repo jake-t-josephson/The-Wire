@@ -2,7 +2,7 @@ import { MemoryRouter } from "react-router-dom";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
-import type { NFLGame } from "../../lib/nfl";
+import { groupNFLByDate, type NFLGame } from "../../lib/nfl";
 import type { NFLDashboardModel } from "../../features/nfl/useNFLDashboard";
 import { NFLDashboardView } from "./NFLDashboard";
 
@@ -20,12 +20,14 @@ const game: NFLGame = {
 };
 
 function model(overrides: Partial<NFLDashboardModel> = {}): NFLDashboardModel {
+  const games = overrides.games ?? [];
   return {
     activeConference: undefined,
     changeWeek: vi.fn(),
     conferenceTab: "AFC",
     dateRange: "Sep 1",
-    games: [],
+    days: groupNFLByDate(games),
+    games,
     gamesError: false,
     leagueLogo: null,
     liveCount: 0,

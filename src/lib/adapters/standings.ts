@@ -19,10 +19,12 @@ export const NFL_STANDING_COLUMNS: StandingColumnModel[] = [
 ];
 
 function teamModel(team: ESPNStandingEntry["team"] | NFLStandingEntry["team"]): TeamModel {
+  // ESPN sometimes returns single-letter abbreviations like "C Palace" for "Crystal Palace"
+  const shortName = /^[A-Z] /.test(team.shortDisplayName) ? team.displayName : team.shortDisplayName;
   return {
     id: team.id,
     name: team.displayName,
-    shortName: team.shortDisplayName,
+    shortName,
     abbreviation: team.abbreviation || team.shortDisplayName.slice(0, 3),
     crest: team.logos?.[0]?.href,
   };

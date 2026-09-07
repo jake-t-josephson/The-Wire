@@ -97,6 +97,18 @@ export function groupByDivision(
   });
 }
 
+export function groupNFLByDate(games: NFLGame[]): Array<{ label: string; games: NFLGame[] }> {
+  const map = new Map<string, NFLGame[]>();
+  for (const g of games) {
+    const label = new Date(g.date).toLocaleDateString("en-US", {
+      weekday: "long", month: "long", day: "numeric",
+    });
+    if (!map.has(label)) map.set(label, []);
+    map.get(label)!.push(g);
+  }
+  return Array.from(map.entries()).map(([label, games]) => ({ label, games }));
+}
+
 export function weekDateRange(games: NFLGame[]): string {
   if (games.length === 0) return "";
   const dates = games.map((g) => new Date(g.date));

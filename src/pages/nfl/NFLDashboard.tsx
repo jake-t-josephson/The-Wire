@@ -27,6 +27,7 @@ export function NFLDashboardView({ model }: { model: NFLDashboardModel }) {
     changeWeek,
     conferenceTab: confTab,
     dateRange,
+    days,
     games,
     gamesError: errorGames,
     leagueLogo,
@@ -86,7 +87,14 @@ export function NFLDashboardView({ model }: { model: NFLDashboardModel }) {
             <p className="empty-state">No games scheduled this week.</p>
           ) : (
             <div>
-              {games.map((game) => <GameRow key={game.id} game={toNFLGameRow(game)} />)}
+              {days.map(({ label, games: dayGames }) => (
+                <div key={label}>
+                  <div className="eyebrow eyebrow--signal mb-3 mt-[22px]">{label}</div>
+                  <div className="games-grid">
+                    {dayGames.map((game) => <GameRow key={game.id} game={toNFLGameRow(game)} />)}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
