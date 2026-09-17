@@ -120,10 +120,16 @@ export async function fetchCalendar(): Promise<{ calendar: string[]; season: num
   };
 }
 
-export async function fetchMatchweekFixtures(start: string, end: string): Promise<ESPNFixture[]> {
-  const param = start === end ? start : `${start}-${end}`;
-  const data  = await get(`${SPORT_BASE}/soccer/eng.1/scoreboard?dates=${param}`);
-  return data.events ?? [];
+export async function fetchMatchweekFixtures(dates: string[]): Promise<ESPNFixture[]> {
+  const seen = new Set<string>();
+  const fixtures: ESPNFixture[] = [];
+  for (const date of dates) {
+    const d = await get(`${SPORT_BASE}/soccer/eng.1/scoreboard?dates=${date}`);
+    for (const event of (d.events ?? [])) {
+      if (!seen.has(event.id)) { seen.add(event.id); fixtures.push(event); }
+    }
+  }
+  return fixtures;
 }
 
 export async function fetchMatchSummary(eventId: string): Promise<ESPNTeamMatchStats[]> {

@@ -38,10 +38,11 @@ async function syncEPL() {
     const mw = matchweeks[idx];
     if (!mw) continue;
 
-    console.log(`[sync:epl] syncing ${mw.label} (${mw.start}–${mw.end})`);
+    const yyyymmdd = mw.dates.map((d) => d.replace(/-/g, ""));
+    console.log(`[sync:epl] syncing ${mw.label} (${yyyymmdd[0]}–${yyyymmdd[yyyymmdd.length - 1]})`);
 
-    // 2. Fixtures for this matchweek
-    const fixtures = await fetchMatchweekFixtures(mw.start, mw.end);
+    // 2. Fixtures for this matchweek — fetched per-date (range param not supported)
+    const fixtures = await fetchMatchweekFixtures(yyyymmdd);
 
     // 3. Upsert teams + fixtures
     const fixtureDbIds = new Map<string, bigint>();
