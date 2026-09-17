@@ -146,3 +146,47 @@ export async function fetchNews(): Promise<ESPNArticle[]> {
   const data = await get(`${SPORT_BASE}/soccer/eng.1/news`);
   return data.articles ?? [];
 }
+
+// ── NFL ───────────────────────────────────────────────────────────────────────
+
+const NFL_BASE = `${SPORT_BASE}/football/nfl`;
+
+export interface NFLTeam {
+  id: string;
+  displayName: string;
+  shortDisplayName: string;
+  abbreviation: string;
+  logo: string;
+  color: string;
+}
+
+export interface NFLGame {
+  id: string;
+  date: string;
+  competitions: [{
+    status: { type: { state: "pre" | "in" | "post"; completed: boolean; shortDetail: string } };
+    venue?: { fullName: string; address?: { city: string; state: string } };
+    competitors: Array<{ homeAway: "home" | "away"; winner: boolean | null; score: string; team: NFLTeam }>;
+  }];
+}
+
+export async function fetchNFLScoreboard(
+  week?: number,
+): Promise<{ week: number; season: number; games: NFLGame[]; leagueLogo: string | null }> {
+  const params = week ? `?week=${week}&seasontype=2` : "";
+  const data = await get(`${NFL_BASE}/scoreboard${params}`);
+  const logos: Array<{ href: string; rel: string[] }> = data.leagues?.[0]?.logos ?? [];
+  const darkLogo  = logos.find((l) => l.rel?.includes("dark"))?.href ?? null;
+  const lightLogo = logos.find((l) => l.rel?.includes("default"))?.href ?? null;
+  return {
+    week:       data.week?.number ?? 1,
+    season:     data.season?.year ?? new Date().getFullYear(),
+    games:      data.events ?? [],
+    leagueLogo: darkLogo ?? lightLogo,
+  };
+}
+
+export async function fetchNFLNews(): Promise<ESPNArticle[]> {
+  const data = await get(`${NFL_BASE}/news`);
+  return data.articles ?? [];
+}

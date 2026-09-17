@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { ESPNTeam, ESPNFixture, ESPNTeamMatchStats, ESPNArticle } from "./espn.ts";
+import type { ESPNTeam, ESPNFixture, ESPNTeamMatchStats, ESPNArticle, NFLTeam, NFLGame } from "./espn.ts";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -241,6 +241,71 @@ export async function upsertNews(article: ESPNArticle): Promise<void> {
       published_at: article.published,
     }, { onConflict: "url", ignoreDuplicates: true });
   if (error) throw new Error(`upsertNews: ${error.message}`);
+}
+
+// ── NFL ───────────────────────────────────────────────────────────────────────
+
+export async function upsertNFLTeam(team: NFLTeam): Promise<bigint> {
+  const { data, error } = await supabase
+    .from("teams")
+    .upsert({
+      league:     "nfl",
+      api_id:     parseInt(team.id),
+      name:       team.displayName,
+      short_name: team.shortDisplayName,
+      crest_url:  team.logo,
+      colors:     { primary: team.color },
+    }, { onConflict: "league,api_id" })
+    .select("id")
+    .single();
+  if (error) throw new Error(`upsertNFLTeam: ${error.message}`);
+  return data.id;
+}
+
+export async function upsertNFLGame(
+  game: NFLGame,
+  homeTeamId: bigint,
+  awayTeamId: bigint,
+  week: number,
+  season: number,
+): Promise<void> {
+  const comp  = game.competitions[0];
+  const home  = comp.competitors.find((c) => c.homeAway === "home");
+  const away  = comp.competitors.find((c) => c.homeAway === "away");
+  const state = comp.status.type.state;
+
+  const { error } = await supabase
+    .from("fixtures")
+    .upsert({
+      league:       "nfl",
+      api_id:       parseInt(game.id),
+      season,
+      matchweek:    week,
+      round:        `WK${week}`,
+      home_team_id: homeTeamId,
+      away_team_id: awayTeamId,
+      kickoff:      game.date,
+      status:       mapStatus(state),
+      home_score:   home?.score && state !== "pre" ? parseInt(home.score) : null,
+      away_score:   away?.score && state !== "pre" ? parseInt(away.score) : null,
+      venue:        comp.venue?.fullName ?? null,
+      updated_at:   new Date().toISOString(),
+    }, { onConflict: "api_id" });
+  if (error) throw new Error(`upsertNFLGame ${game.id}: ${error.message}`);
+}
+
+export async function upsertNFLNews(article: ESPNArticle): Promise<void> {
+  const { error } = await supabase
+    .from("news_items")
+    .upsert({
+      league:       "nfl",
+      title:        article.headline,
+      url:          article.links.web.href,
+      source:       "ESPN",
+      summary:      article.description ?? null,
+      published_at: article.published,
+    }, { onConflict: "url", ignoreDuplicates: true });
+  if (error) throw new Error(`upsertNFLNews: ${error.message}`);
 }
 
 // ── Sync log ──────────────────────────────────────────────────────────────────

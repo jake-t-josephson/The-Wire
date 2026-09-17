@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "sync:epl": "tsx sync/epl.ts"
+    "sync:epl": "tsx sync/epl.ts",
+    "sync:nfl": "tsx sync/nfl.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4"

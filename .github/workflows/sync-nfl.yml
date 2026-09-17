@@ -1,0 +1,36 @@
+name: Sync NFL
+
+on:
+  schedule:
+    - cron: "30 * * * *"   # every hour, offset from EPL
+  workflow_dispatch:        # manual trigger from GitHub UI
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: scripts/package-lock.json
+
+      - name: Install deps
+        working-directory: scripts
+        run: npm ci
+
+      - name: Check secrets
+        run: |
+          if [ -z "$SUPABASE_URL" ]; then echo "SUPABASE_URL is EMPTY"; else echo "SUPABASE_URL is set (${#SUPABASE_URL} chars)"; fi
+          if [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then echo "SUPABASE_SERVICE_ROLE_KEY is EMPTY"; else echo "SUPABASE_SERVICE_ROLE_KEY is set (${#SUPABASE_SERVICE_ROLE_KEY} chars)"; fi
+
+      - name: Run NFL sync
+        working-directory: scripts
+        run: npm run sync:nfl
