@@ -41,13 +41,13 @@ export function useCFBDashboard() {
 
   const loadRankings = useCallback((nextWeek: number, nextSeason: number) => {
     setLoadingRankings(true);
-    Promise.all([
-      fetchCFBRankings(),
-      fetchCFBPollSnapshot(nextSeason, nextWeek),
-    ]).then(([live, snapshot]) => {
-      setLiveRankings(live);
-      setSnapshotRankings(snapshot);
-    }).finally(() => setLoadingRankings(false));
+    fetchCFBRankings()
+      .then(setLiveRankings)
+      .catch(() => {})
+      .finally(() => setLoadingRankings(false));
+    fetchCFBPollSnapshot(nextSeason, nextWeek)
+      .then(setSnapshotRankings)
+      .catch(() => {});
   }, []);
 
   const loadGames = useCallback((nextWeek: number, nextView: CFBView) => {
