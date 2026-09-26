@@ -211,14 +211,23 @@ export interface CFBRankingEntry {
 
 export async function fetchCFBCurrentPoll(): Promise<{ season: number; week: number; rankings: CFBRankingEntry[] }> {
   const data = await get(`${CFB_BASE}/rankings?seasontype=2`);
-  const ap = (data.rankings ?? []).find((p: { shortName: string }) => p.shortName === "AP Top 25")
+  const ap = (data.rankings ?? []).find((p: { shortName: string }) => /^AP (Poll|Top 25)/i.test(p.shortName))
     ?? data.rankings?.[0];
-  const week = parseInt(data.latestWeek?.number ?? data.weeks?.slice(-1)[0]?.week ?? "1");
-  const season = data.latestSeason?.year ?? new Date().getFullYear();
+  const week: number = data.latestWeek?.number ?? 1;
+  const season: number = data.latestSeason?.year ?? new Date().getFullYear();
   return {
     season,
     week,
-    rankings: (ap?.ranks ?? []) as CFBRankingEntry[],
+    rankings: (ap?.ranks ?? []).map((r: {
+      current: number; previous?: number; points?: number; recordSummary?: string;
+      team: { id: string; nickname: string; abbreviation: string; color: string; logos: Array<{ href: string }> };
+    }) => ({
+      rank:          r.current,
+      previous:      r.previous,
+      points:        r.points,
+      recordSummary: r.recordSummary,
+      team:          r.team,
+    })),
   };
 }
 
