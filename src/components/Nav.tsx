@@ -6,6 +6,7 @@ const PRIMARY_LINKS = [
   { label: "Today",     to: "/" },
   { label: "Football",  to: "/epl" },
   { label: "NFL",       to: "/nfl" },
+  { label: "CFB",       to: "/cfb" },
   { label: "Podcasts",  to: "/podcasts" },
 ] as const;
 

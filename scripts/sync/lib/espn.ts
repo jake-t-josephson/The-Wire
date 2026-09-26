@@ -190,3 +190,39 @@ export async function fetchNFLNews(): Promise<ESPNArticle[]> {
   const data = await get(`${NFL_BASE}/news`);
   return data.articles ?? [];
 }
+
+// ── CFB ───────────────────────────────────────────────────────────────────────
+
+const CFB_BASE = `${SPORT_BASE}/football/college-football`;
+
+export interface CFBRankingEntry {
+  rank: number;
+  previous?: number;
+  points?: number;
+  recordSummary?: string;
+  team: {
+    id: string;
+    nickname: string;
+    abbreviation: string;
+    color: string;
+    logos: Array<{ href: string }>;
+  };
+}
+
+export async function fetchCFBCurrentPoll(): Promise<{ season: number; week: number; rankings: CFBRankingEntry[] }> {
+  const data = await get(`${CFB_BASE}/rankings?seasontype=2`);
+  const ap = (data.rankings ?? []).find((p: { shortName: string }) => p.shortName === "AP Top 25")
+    ?? data.rankings?.[0];
+  const week = parseInt(data.latestWeek?.number ?? data.weeks?.slice(-1)[0]?.week ?? "1");
+  const season = data.latestSeason?.year ?? new Date().getFullYear();
+  return {
+    season,
+    week,
+    rankings: (ap?.ranks ?? []) as CFBRankingEntry[],
+  };
+}
+
+export async function fetchCFBNews(): Promise<ESPNArticle[]> {
+  const data = await get(`${CFB_BASE}/news`);
+  return data.articles ?? [];
+}

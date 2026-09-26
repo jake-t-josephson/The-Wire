@@ -19,3 +19,8 @@ export const NFL_SOURCE_META: Record<string, SourceMeta> = {
   ProFootballTalk: { color: "var(--color-bone)", logo: "/brand/pft-logo.webp",      label: "ProFootballTalk" },
   "The Ringer":    { color: "#05b113",           logo: faviconUrl("theringer.com"), label: "The Ringer" },
 };
+
+export const CFB_SOURCE_META: Record<string, SourceMeta> = {
+  ESPN:         { color: "#dd0300", logo: faviconUrl("espn.com"),        label: "ESPN" },
+  "The Ringer": { color: "#05b113", logo: faviconUrl("theringer.com"),   label: "The Ringer" },
+};

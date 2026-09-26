@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { ESPNTeam, ESPNFixture, ESPNTeamMatchStats, ESPNArticle, NFLTeam, NFLGame } from "./espn.ts";
+import type { ESPNTeam, ESPNFixture, ESPNTeamMatchStats, ESPNArticle, NFLTeam, NFLGame, CFBRankingEntry } from "./espn.ts";
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
@@ -229,11 +229,11 @@ export async function upsertLeague(opts: {
 
 // ── News ──────────────────────────────────────────────────────────────────────
 
-export async function upsertNews(article: ESPNArticle): Promise<void> {
+export async function upsertNews(article: ESPNArticle, league = "epl"): Promise<void> {
   const { error } = await supabase
     .from("news_items")
     .upsert({
-      league:       "epl",
+      league,
       title:        article.headline,
       url:          article.links.web.href,
       source:       "ESPN",
@@ -295,17 +295,41 @@ export async function upsertNFLGame(
 }
 
 export async function upsertNFLNews(article: ESPNArticle): Promise<void> {
+  return upsertNews(article, "nfl");
+}
+
+// ── CFB poll snapshots ────────────────────────────────────────────────────────
+
+export async function upsertCFBPollSnapshot(
+  rankings: CFBRankingEntry[],
+  season: number,
+  week: number,
+): Promise<void> {
+  const rows = rankings.map((r) => ({
+    season,
+    week,
+    rank:          r.rank,
+    team_espn_id:  r.team.id,
+    team_name:     r.team.nickname,
+    team_abbr:     r.team.abbreviation,
+    team_logo:     r.team.logos?.[0]?.href ?? null,
+    record:        r.recordSummary ?? null,
+    points:        r.points ?? null,
+    previous_rank: r.previous ?? null,
+  }));
   const { error } = await supabase
-    .from("news_items")
-    .upsert({
-      league:       "nfl",
-      title:        article.headline,
-      url:          article.links.web.href,
-      source:       "ESPN",
-      summary:      article.description ?? null,
-      published_at: article.published,
-    }, { onConflict: "url", ignoreDuplicates: true });
-  if (error) throw new Error(`upsertNFLNews: ${error.message}`);
+    .from("cfb_poll_snapshots")
+    .upsert(rows, { onConflict: "season,week,team_espn_id" });
+  if (error) throw new Error(`upsertCFBPollSnapshot: ${error.message}`);
+}
+
+export async function hasCFBPollSnapshot(season: number, week: number): Promise<boolean> {
+  const { count } = await supabase
+    .from("cfb_poll_snapshots")
+    .select("id", { count: "exact", head: true })
+    .eq("season", season)
+    .eq("week", week);
+  return (count ?? 0) > 0;
 }
 
 // ── Sync log ──────────────────────────────────────────────────────────────────

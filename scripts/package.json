@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "sync:epl": "tsx sync/epl.ts",
-    "sync:nfl": "tsx sync/nfl.ts"
+    "sync:nfl": "tsx sync/nfl.ts",
+    "sync:cfb": "tsx sync/cfb.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4"

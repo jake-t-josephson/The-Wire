@@ -12,6 +12,7 @@ const MatchDetail = lazy(() => import("./pages/epl/MatchDetail"));
 const TeamDetail = lazy(() => import("./pages/epl/TeamDetail"));
 const Podcasts = lazy(() => import("./pages/Podcasts"));
 const NFLDashboard = lazy(() => import("./pages/nfl/NFLDashboard"));
+const CFBDashboard = lazy(() => import("./pages/cfb/CFBDashboard"));
 const StyleGuide = lazy(() => import("./pages/StyleGuide"));
 
 function AppShell() {
@@ -27,6 +28,7 @@ function AppShell() {
           <Route path="/epl/team/:teamId" element={<TeamDetail />} />
           <Route path="/podcasts" element={<Podcasts />} />
           <Route path="/nfl" element={<NFLDashboard />} />
+          <Route path="/cfb" element={<CFBDashboard />} />
           <Route path="/ui" element={<StyleGuide />} />
         </Routes>
       </Suspense>
